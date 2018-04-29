@@ -4,6 +4,7 @@ import fileinput
 import random
 from time import sleep
 from mutagen.easyid3 import EasyID3
+import msvcrt as keyboard
 
 
 SETTINGS_FILENAME = "mp3-player-settings.txt"
@@ -19,6 +20,11 @@ TRACK_NUMBER_ORDER_CODES = ["3", "n", "numerical", "track", "track number", "num
 RANDOM_ORDER = 4
 RANDOM_ORDER_CODES = ["4", "r", "random", "rand"]
 
+ARROW_UP = b"H"
+ARROW_DN = b"P"
+ARROW_DX = b"M"
+ARROW_SX = b"K"
+
 
 def getSongs():
     files = os.listdir()
@@ -28,17 +34,29 @@ def getSongs():
             songs.append(file)
     return songs
 def getSettings():
-    playOrder = open(SETTINGS_FILENAME, "r").readline()
-    if (playOrder in ALPHABETICAL_ORDER_CODES):
-        return ALPHABETICAL_ORDER
-    elif (playOrder in TITLE_ORDER_CODES):
-        return TITLE_ORDER
-    elif (playOrder in PRODUCER_ORDER_CODES):
-        return PRODUCER_ORDER
-    elif (playOrder in TRACK_NUMBER_ORDER_CODES):
-        return TRACK_NUMBER_ORDER
-    elif (playOrder in RANDOM_ORDER_CODES):
-        return RANDOM_ORDER
+    settings = []
+    file = open(SETTINGS_FILENAME, "r")
+    line = file.readline().strip()
+    print(line)
+    if (line in ALPHABETICAL_ORDER_CODES):
+        settings.append(ALPHABETICAL_ORDER)
+    elif (line in TITLE_ORDER_CODES):
+        settings.append(TITLE_ORDER)
+    elif (line in PRODUCER_ORDER_CODES):
+        settings.append(PRODUCER_ORDER)
+    elif (line in TRACK_NUMBER_ORDER_CODES):
+        settings.append(TRACK_NUMBER_ORDER)
+    elif (line in RANDOM_ORDER_CODES):
+        settings.append(RANDOM_ORDER)
+
+    line = file.readline().strip()
+    print(line)
+    if line is "":
+        settings.append(0)
+    else:
+        settings.append(int(line))
+
+    return settings
 
 
 def orderTitle(songs):
@@ -49,7 +67,7 @@ def orderTitle(songs):
             songFile = EasyID3(songs[currentSong])
             songTitles.append(songFile["title"])
         except:
-            songTitles.append("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            songTitles.append(-1)
             print("Error")
     
     for i in range(0, nrSongs):
@@ -66,7 +84,7 @@ def orderProducer(songs):
             songFile = EasyID3(songs[currentSong])
             songProducers.append(songFile["artist"])
         except:
-            songProducers.append("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            songProducers.append(-1)
             print("Error")
     
     for i in range(0, nrSongs):
@@ -99,29 +117,58 @@ def orderTrackNumber(songs):
     return songs
 
 
-def playSongs(songs):
-    for song in songs:
-        player = vlc.MediaPlayer(song)
+def playSongs(songs, playOrder, startSong):
+    nrSongs = len(songs)
+    currentSong = startSong
+    while 1:
+        player = vlc.MediaPlayer(songs[currentSong])
         player.play()
-        print("Now playing \"{}\"".format(song[:-4]))
-        while player.get_state() != vlc.State.Ended: pass
+        print("Now playing \"{}\"".format(songs[currentSong][:-4]))
+
+        while player.get_state() != vlc.State.Ended:
+            sleep(0.1)
+
+            if keyboard.kbhit():
+                key = keyboard.getch()
+                if key is b"p":
+                    player.pause()
+                elif key is b"s":
+                    settingsFile = open(SETTINGS_FILENAME, "w")
+                    settingsFile.write("{}\n".format(playOrder))
+                    if playOrder is not RANDOM_ORDER: settingsFile.write("{}\n".format(currentSong))
+                    return
+                elif key is b"e":
+                    return
+                elif key is b"\xe0":
+                    key = keyboard.getch()
+                    if key is ARROW_UP or key is ARROW_DX:
+                        player.stop()
+                        break
+                    elif (key is ARROW_DN or key is ARROW_SX) and (currentSong > 0):
+                        player.stop()
+                        currentSong -= 2
+                        break
+
+        currentSong += 1
+        if (currentSong >= nrSongs): currentSong = 0
+
 
 def main():
     songs = getSongs()
 
-    playOrder = getSettings()
-    if (playOrder == TITLE_ORDER):
+    settings = getSettings()
+    print(settings)
+    if (settings[0] == TITLE_ORDER):
         songs = orderTitle(songs)
-    elif (playOrder == PRODUCER_ORDER):
+    elif (settings[0] == PRODUCER_ORDER):
         songs = orderProducer(songs)
-    elif (playOrder == TRACK_NUMBER_ORDER):
+    elif (settings[0] == TRACK_NUMBER_ORDER):
         songs = orderTrackNumber(songs)
-    elif (playOrder == RANDOM_ORDER):
+    elif (settings[0] == RANDOM_ORDER):
         random.shuffle(songs)
         
     print(songs)
-    playSongs(songs)
+    playSongs(songs, settings[0], settings[1])
 
 
 main()
-while 1: pass
