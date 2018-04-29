@@ -1,7 +1,7 @@
 import vlc
 import os
 import fileinput
-from random import randint
+import random
 from time import sleep
 from mutagen.easyid3 import EasyID3
 
@@ -42,16 +42,60 @@ def getSettings():
 
 
 def orderTitle(songs):
-    return songs
-def orderProducer(songs):
-    return songs
-def orderTrackNumber(songs):
-    return songs
-def orderRandom(songs):
+    songTitles = []
     nrSongs = len(songs)
     for currentSong in range(0, nrSongs):
-       swapSong = randint(0, nrSongs - 1)
-       songs[currentSong], songs[swapSong] = songs[swapSong], songs[currentSong]
+        try:
+            songFile = EasyID3(songs[currentSong])
+            songTitles.append(songFile["title"])
+        except:
+            songTitles.append("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            print("Error")
+    
+    for i in range(0, nrSongs):
+        for j in range(0, nrSongs - 1):
+            if (min(songTitles[j], songTitles[j + 1]) == songTitles[j + 1]):
+                songTitles[j], songTitles[j + 1] = songTitles[j + 1], songTitles[j]
+                songs[j], songs[j + 1] = songs[j + 1], songs[j]
+    return songs
+def orderProducer(songs):
+    songProducers = []
+    nrSongs = len(songs)
+    for currentSong in range(0, nrSongs):
+        try:
+            songFile = EasyID3(songs[currentSong])
+            songProducers.append(songFile["artist"])
+        except:
+            songProducers.append("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            print("Error")
+    
+    for i in range(0, nrSongs):
+        for j in range(0, nrSongs - 1):
+            if (min(songProducers[j], songProducers[j + 1]) == songProducers[j + 1]):
+                songProducers[j], songProducers[j + 1] = songProducers[j + 1], songProducers[j]
+                songs[j], songs[j + 1] = songs[j + 1], songs[j]
+    return songs
+def orderTrackNumber(songs):
+    songNumbers = []
+    nrSongs = len(songs)
+    for currentSong in range(0, nrSongs):
+        try:
+            songFile = EasyID3(songs[currentSong])
+
+            convertedString = ""
+            for letter in songFile["tracknumber"]:
+                convertedString += letter
+            songNumbers.append(int(convertedString))
+        except:
+            songNumbers.append(0)
+            print("Error")
+    
+    for i in range(0, nrSongs):
+        for j in range(0, nrSongs - 1):
+            if (songNumbers[j] > songNumbers[j + 1]):
+                songNumbers[j], songNumbers[j + 1] = songNumbers[j + 1], songNumbers[j]
+                songs[j], songs[j + 1] = songs[j + 1], songs[j]
+
     return songs
 
 
@@ -61,8 +105,6 @@ def playSongs(songs):
         player.play()
         print("Now playing \"{}\"".format(song[:-4]))
         while player.get_state() != vlc.State.Ended: pass
-
-
 
 def main():
     songs = getSongs()
@@ -75,8 +117,9 @@ def main():
     elif (playOrder == TRACK_NUMBER_ORDER):
         songs = orderTrackNumber(songs)
     elif (playOrder == RANDOM_ORDER):
-        songs = orderRandom(songs)
+        random.shuffle(songs)
         
+    print(songs)
     playSongs(songs)
 
 
