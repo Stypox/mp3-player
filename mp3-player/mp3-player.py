@@ -1,174 +1,274 @@
+#!/usr/bin/env python3
+
+#os
+import platform
+OS_NAME = platform.system()
+OS_WINDOWS = "Windows"
+OS_LINUX = "Linux"
+
+#misc
 import vlc
 import os
 import fileinput
 import random
 from time import sleep
 from mutagen.easyid3 import EasyID3
-import msvcrt as keyboard
+import sys
+from enum import Enum
 
 
 SETTINGS_FILENAME = "mp3-player-settings.txt"
+DEFAULT_SONGS_DIRECTORY = "./mp3-player-songs/"
 
-ALPHABETICAL_ORDER = 0
 ALPHABETICAL_ORDER_CODES = ["0", "a", "alphabetical", "alphabet"]
-TITLE_ORDER = 1
 TITLE_ORDER_CODES = ["1", "t", "title", "name"]
-PRODUCER_ORDER = 2
-PRODUCER_ORDER_CODES = ["2", "p", "producer", "artist", "author"]
-TRACK_NUMBER_ORDER = 3
+ARTIST_ORDER_CODES = ["2", "p", "producer", "artist", "author"]
 TRACK_NUMBER_ORDER_CODES = ["3", "n", "numerical", "track", "track number", "number"]
-RANDOM_ORDER = 4
 RANDOM_ORDER_CODES = ["4", "r", "random", "rand"]
+class Order(Enum):
+	alphabetical = 0
+	title = 1
+	artist = 2
+	trackNumber = 3
+	random = 4
+	default = trackNumber
 
-ARROW_UP = b"H"
-ARROW_DN = b"P"
-ARROW_DX = b"M"
-ARROW_SX = b"K"
-
-
-def getSongs():
-    files = os.listdir()
-    songs = []
-    for file in files:
-        if file[-4:] == ".mp3":
-            songs.append(file)
-    return songs
-def getSettings():
-    settings = []
-    file = open(SETTINGS_FILENAME, "r")
-    line = file.readline().strip()
-    print(line)
-    if (line in ALPHABETICAL_ORDER_CODES):
-        settings.append(ALPHABETICAL_ORDER)
-    elif (line in TITLE_ORDER_CODES):
-        settings.append(TITLE_ORDER)
-    elif (line in PRODUCER_ORDER_CODES):
-        settings.append(PRODUCER_ORDER)
-    elif (line in TRACK_NUMBER_ORDER_CODES):
-        settings.append(TRACK_NUMBER_ORDER)
-    elif (line in RANDOM_ORDER_CODES):
-        settings.append(RANDOM_ORDER)
-
-    line = file.readline().strip()
-    print(line)
-    if line is "":
-        settings.append(0)
-    else:
-        settings.append(int(line))
-
-    return settings
+ABORT_KEYS = ['e', 'a']
+SAVE_KEYS = ['s']
+PAUSE_KEYS = ['p', '\n']
+RESTART_KEYS = ['r', '[H']
+NEXT_SONG_KEYS = ['[B', '[C', '[6']
+PREV_SONG_KEYS = ['[A', '[D', '[5']
+class Action(Enum):
+	none = -1
+	abort = 0
+	save = 1
+	pause = 2
+	nextSong = 3
+	prevSong = 4
+	restart = 5
 
 
-def orderTitle(songs):
-    songTitles = []
-    nrSongs = len(songs)
-    for currentSong in range(0, nrSongs):
-        try:
-            songFile = EasyID3(songs[currentSong])
-            songTitles.append(songFile["title"])
-        except:
-            songTitles.append(-1)
-            print("Error")
-    
-    for i in range(0, nrSongs):
-        for j in range(0, nrSongs - 1):
-            if (min(songTitles[j], songTitles[j + 1]) == songTitles[j + 1]):
-                songTitles[j], songTitles[j + 1] = songTitles[j + 1], songTitles[j]
-                songs[j], songs[j + 1] = songs[j + 1], songs[j]
-    return songs
-def orderProducer(songs):
-    songProducers = []
-    nrSongs = len(songs)
-    for currentSong in range(0, nrSongs):
-        try:
-            songFile = EasyID3(songs[currentSong])
-            songProducers.append(songFile["artist"])
-        except:
-            songProducers.append(-1)
-            print("Error")
-    
-    for i in range(0, nrSongs):
-        for j in range(0, nrSongs - 1):
-            if (min(songProducers[j], songProducers[j + 1]) == songProducers[j + 1]):
-                songProducers[j], songProducers[j + 1] = songProducers[j + 1], songProducers[j]
-                songs[j], songs[j + 1] = songs[j + 1], songs[j]
-    return songs
-def orderTrackNumber(songs):
-    songNumbers = []
-    nrSongs = len(songs)
-    for currentSong in range(0, nrSongs):
-        try:
-            songFile = EasyID3(songs[currentSong])
+#keyboard input
+if OS_NAME == OS_WINDOWS:
+	import msvcrt
+	class Keyboard:
+		@staticmethod
+		def init():
+			pass
+		@staticmethod
+		def hit():
+			return msvcrt.kbhit()
+		@staticmethod
+		def getAction():
+			if Keyboard.hit():
+				readChar = sys.stdin.read(1)
+			else:
+				return Action.none
 
-            convertedString = ""
-            for letter in songFile["tracknumber"]:
-                convertedString += letter
-            songNumbers.append(int(convertedString))
-        except:
-            songNumbers.append(0)
-            print("Error")
-    
-    for i in range(0, nrSongs):
-        for j in range(0, nrSongs - 1):
-            if (songNumbers[j] > songNumbers[j + 1]):
-                songNumbers[j], songNumbers[j + 1] = songNumbers[j + 1], songNumbers[j]
-                songs[j], songs[j + 1] = songs[j + 1], songs[j]
+			while Keyboard.hit():
+				readChar = sys.stdin.read(1)
+			if readChar == '\x1B':				#not sure if this works on windows
+				readChar = sys.stdin.read(1)
+				if readChar == '[':
+					readChar += sys.stdin.read(1)
+					
+			if readChar in ABORT_KEYS:
+				return Action.abort
+			elif readChar in SAVE_KEYS:
+				return Action.save
+			elif readChar in PAUSE_KEYS:
+				return Action.pause
+			elif readChar in NEXT_SONG_KEYS:
+				return Action.nextSong
+			elif readChar in PREV_SONG_KEYS:
+				return Action.prevSong
+			else:
+				return Action.none
+else:
+	if (OS_NAME != OS_LINUX):
+		print("The operating system \"%s\" may not be supported" % OS_NAME)
+	import termios, atexit, select
+	class TerminalSettings:
+		fileDescriptor = sys.stdin.fileno()
+		old = termios.tcgetattr(fileDescriptor)
+		new = old[:3] + [old[3] & ~termios.ICANON & ~termios.ECHO] + old[4:]
 
-    return songs
+		@staticmethod
+		def setOld():
+			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.old)
+		@staticmethod
+		def setNew():
+			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.new)
+	class Keyboard:
+		@staticmethod
+		def init():
+			atexit.register(TerminalSettings.setOld)
+			TerminalSettings.setNew()
+		@staticmethod
+		def hit():
+			return select.select([sys.stdin,],[],[],0.0)[0] != []
+		@staticmethod
+		def getAction():
+			if Keyboard.hit():
+				readChar = sys.stdin.read(1)
+			else:
+				return Action.none
 
-
-def playSongs(songs, playOrder, startSong):
-    nrSongs = len(songs)
-    currentSong = startSong
-    while 1:
-        player = vlc.MediaPlayer(songs[currentSong])
-        player.play()
-        print("Now playing \"{}\"".format(songs[currentSong][:-4]))
-
-        while player.get_state() != vlc.State.Ended:
-            sleep(0.1)
-
-            if keyboard.kbhit():
-                key = keyboard.getch()
-                if key is b"p":
-                    player.pause()
-                elif key is b"s":
-                    settingsFile = open(SETTINGS_FILENAME, "w")
-                    settingsFile.write("{}\n".format(playOrder))
-                    if playOrder is not RANDOM_ORDER: settingsFile.write("{}\n".format(currentSong))
-                    return
-                elif key is b"e":
-                    return
-                elif key is b"\xe0":
-                    key = keyboard.getch()
-                    if key is ARROW_UP or key is ARROW_DX:
-                        player.stop()
-                        break
-                    elif (key is ARROW_DN or key is ARROW_SX) and (currentSong > 0):
-                        player.stop()
-                        currentSong -= 2
-                        break
-
-        currentSong += 1
-        if (currentSong >= nrSongs): currentSong = 0
+			while Keyboard.hit():
+				readChar = sys.stdin.read(1)
+			if readChar == '\x1B':
+				readChar = sys.stdin.read(1)
+				if readChar == '[':
+					readChar += sys.stdin.read(1)
+					
+			if readChar in ABORT_KEYS:
+				return Action.abort
+			elif readChar in SAVE_KEYS:
+				return Action.save
+			elif readChar in PAUSE_KEYS:
+				return Action.pause
+			elif readChar in NEXT_SONG_KEYS:
+				return Action.nextSong
+			elif readChar in PREV_SONG_KEYS:
+				return Action.prevSong
+			elif readChar in RESTART_KEYS:
+				return Action.restart
+			else:
+				return Action.none
+	Keyboard.init()
 
 
-def main():
-    songs = getSongs()
+class Song:
+	def __init__(self, path):
+		self.path = path
+		try: self.songID3 = EasyID3(path)
+		except: self.ID3fail = True
+		self.ID3fail = False
+	
+	def title(self):
+		if self.ID3fail or self.songID3["title"][0] == "": return chr(0x10ffff)
+		return self.songID3["title"][0]
+	def artist(self):
+		if self.ID3fail or self.songID3["artist"][0] == "": return chr(0x10ffff)
+		return self.songID3["artist"][0]
+	def trackNumber(self):
+		if self.ID3fail: return 0xffffffff
+		try:
+			return int(self.songID3["tracknumber"][0])
+		except:
+			return 0xffffffff
 
-    settings = getSettings()
-    print(settings)
-    if (settings[0] == TITLE_ORDER):
-        songs = orderTitle(songs)
-    elif (settings[0] == PRODUCER_ORDER):
-        songs = orderProducer(songs)
-    elif (settings[0] == TRACK_NUMBER_ORDER):
-        songs = orderTrackNumber(songs)
-    elif (settings[0] == RANDOM_ORDER):
-        random.shuffle(songs)
-        
-    print(songs)
-    playSongs(songs, settings[0], settings[1])
+	def __repr__(self):
+		if self.ID3fail: return self.path
+		return self.songID3["title"][0]
 
 
-main()
+def getSongs(songsDirectory):
+	try: files = os.listdir(songsDirectory)
+	except FileNotFoundError:
+		print("No such file or directory: \"%s\"" % songsDirectory)
+		return []
+	songs = []
+	for file in files:
+		if file[-4:] == ".mp3":
+			songs.append(Song(songsDirectory + file))
+	return songs
+def readSettings(arguments):
+	songsDirectory = ""
+	playOrder = ""
+	startSong = ""
+	try:
+		settingsFile = open(SETTINGS_FILENAME, "r")
+		songsDirectory = settingsFile.readline().strip()
+		playOrder = settingsFile.readline().strip()
+		startSong = settingsFile.readline().strip()
+	except FileNotFoundError:
+		pass
+
+	if len(arguments) > 1:
+		songsDirectory = arguments[1]
+		if len(arguments) > 2:
+			playOrder = arguments[2]
+			if len(arguments) > 3:
+				startSong = arguments[3]
+		
+	
+	if songsDirectory == "":
+		songsDirectory = DEFAULT_SONGS_DIRECTORY
+	elif songsDirectory[-1] != '/':
+		songsDirectory += '/'
+	
+	if   playOrder in ALPHABETICAL_ORDER_CODES:	playOrder = Order.alphabetical
+	elif playOrder in TITLE_ORDER_CODES:		playOrder = Order.title
+	elif playOrder in ARTIST_ORDER_CODES:		playOrder = Order.artist
+	elif playOrder in TRACK_NUMBER_ORDER_CODES:	playOrder = Order.trackNumber
+	elif playOrder in RANDOM_ORDER_CODES:		playOrder = Order.random
+	else:										playOrder = Order.default
+
+	try: startSong = int(startSong)
+	except ValueError: startSong = 0
+
+	return [songsDirectory, playOrder, startSong]
+def writeSettings(songsDirectory, playOrder, startSong):
+	if playOrder == Order.random:
+		startSong = 0
+	settingsFile = open(SETTINGS_FILENAME, "w")
+	settingsFile.write("%s\n%s\n%s" % (songsDirectory, playOrder, startSong))
+
+
+def playSongs(songs, songsDirectory, playOrder, startSong):
+	nrSongs = len(songs)
+	if nrSongs == 0: return
+	currentSong = startSong
+
+	while 1:
+		player = vlc.MediaPlayer(songs[currentSong].path)
+		player.play()
+		print("Now playing \"%s\""% songs[currentSong].title())
+
+		while player.get_state() != vlc.State.Ended:
+			sleep(0.1)
+
+			nextAction = Keyboard.getAction()
+			if nextAction == Action.abort:
+				return
+			elif nextAction == Action.save:
+				writeSettings(songsDirectory, playOrder, currentSong)
+				return
+			elif nextAction == Action.pause:
+				player.pause()
+			elif nextAction == Action.nextSong:
+				player.stop()
+				break
+			elif nextAction == Action.prevSong:
+				player.stop()
+				currentSong -= 2
+				break
+			elif nextAction == Action.restart:
+				player.stop()
+				currentSong = -1
+				break
+
+		currentSong += 1
+		if (currentSong >= nrSongs): currentSong = 0
+		elif (currentSong < 0): currentSong += nrSongs
+
+
+def main(arguments):
+	songsDirectory, playOrder, startSong = readSettings(arguments)
+	print(songsDirectory, playOrder, startSong)
+	
+	songs = getSongs(songsDirectory)
+
+	if   playOrder == Order.title:			songs = sorted(songs, key = lambda song: song.title())
+	elif playOrder == Order.artist:			songs = sorted(songs, key = lambda song: song.artist())
+	elif playOrder == Order.trackNumber:	songs = sorted(songs, key = lambda song: song.trackNumber())
+	elif playOrder == Order.random:			random.shuffle(songs)
+	
+	print(songs)
+	playSongs(songs, songsDirectory, playOrder, startSong)
+
+
+if __name__ == '__main__':
+	main(sys.argv)
