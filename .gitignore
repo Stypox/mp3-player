@@ -87,5 +87,4 @@ ipch/
 
 *.txt
 *.mp3
-./mp3-player/mp3-player-songs/
 .vscode/

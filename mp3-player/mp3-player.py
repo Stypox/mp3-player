@@ -225,7 +225,7 @@ def playSongs(songs, songsDirectory, playOrder, startSong):
 	while 1:
 		player = vlc.MediaPlayer(songs[currentSong].path)
 		player.play()
-		print("Now playing \"%s\""% songs[currentSong].title())
+		print("Now playing: \"%s\" by \"%s\"" % (songs[currentSong].title(), songs[currentSong].artist()))
 
 		while player.get_state() != vlc.State.Ended:
 			sleep(0.1)
@@ -266,7 +266,7 @@ def main(arguments):
 	elif playOrder == Order.trackNumber:	songs = sorted(songs, key = lambda song: song.trackNumber())
 	elif playOrder == Order.random:			random.shuffle(songs)
 	
-	print(songs)
+	print(*songs, sep="   ")
 	playSongs(songs, songsDirectory, playOrder, startSong)
 
 
