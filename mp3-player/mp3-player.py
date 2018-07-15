@@ -186,6 +186,7 @@ def readSettings(arguments):
 	except FileNotFoundError:
 		pass
 
+	#TODO add support for more than one directory
 	if len(arguments) > 1:
 		songsDirectory = arguments[1]
 		if len(arguments) > 2:
@@ -226,18 +227,24 @@ def playSongs(songs, songsDirectory, playOrder, startSong):
 		player = vlc.MediaPlayer(songs[currentSong].path)
 		player.play()
 		print("Now playing: \"%s\" by \"%s\"" % (songs[currentSong].title(), songs[currentSong].artist()))
+		paused = False
 
 		while player.get_state() != vlc.State.Ended:
 			sleep(0.1)
 
 			nextAction = Keyboard.getAction()
 			if nextAction == Action.abort:
+				print("Aborting...")
 				return
 			elif nextAction == Action.save:
 				writeSettings(songsDirectory, playOrder, currentSong)
+				print("Saved")
 				return
 			elif nextAction == Action.pause:
 				player.pause()
+				paused = not paused
+				if paused: print("Pause")
+				else: print("Resume")
 			elif nextAction == Action.nextSong:
 				player.stop()
 				break
@@ -248,6 +255,7 @@ def playSongs(songs, songsDirectory, playOrder, startSong):
 			elif nextAction == Action.restart:
 				player.stop()
 				currentSong = -1
+				print("Restart")
 				break
 
 		currentSong += 1
@@ -271,4 +279,6 @@ def main(arguments):
 
 
 if __name__ == '__main__':
+	print("\n%s\nSTART %s\n%s\n" % ("-" * (6 + len(sys.argv[0])), sys.argv[0], "-" * (6 + len(sys.argv[0]))))
 	main(sys.argv)
+	print("\n%s\n END %s \n%s\n" % ("-" * (6 + len(sys.argv[0])), sys.argv[0], "-" * (6 + len(sys.argv[0]))))
