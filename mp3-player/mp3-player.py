@@ -53,20 +53,23 @@ NEXT_SONG_KEYS = ['[B', '[C']
 PREV_SONG_KEYS = ['[A', '[D']
 NEXT_PLAYLIST_KEYS = ['[6']
 PREV_PLAYLIST_KEYS = ['[5']
-class Action(Enum):
-	none = -1
-	abort = 0
-	save = 1
-	pause = 2
-	nextSong = 3
-	prevSong = 4
-	restart = 5
 
 
 #keyboard input
 if OS_NAME == OS_WINDOWS:
 	import msvcrt
 	class Keyboard:
+		class Event(Enum):
+			none = -1
+			abort = 0
+			save = 1
+			pause = 2
+			restart = 3
+			nextSong = 4
+			prevSong = 5
+			nextPlaylist = 6
+			prevPlaylist = 7
+		
 		@staticmethod
 		def init():
 			pass
@@ -74,31 +77,31 @@ if OS_NAME == OS_WINDOWS:
 		def hit():
 			return msvcrt.kbhit()
 		@staticmethod
-		def getAction():
+		def getEvent():
 			if Keyboard.hit():
 				readChar = sys.stdin.read(1)
 			else:
-				return Action.none
+				return Keyboard.Event.none
 
 			while Keyboard.hit():
 				readChar = sys.stdin.read(1)
-			if readChar == '\x1B':				#not sure if this works on windows
+			if readChar == '\x1B':				#TODO not sure if this works on windows
 				readChar = sys.stdin.read(1)
 				if readChar == '[':
 					readChar += sys.stdin.read(1)
 					
 			if readChar in ABORT_KEYS:
-				return Action.abort
+				return Keyboard.Event.abort
 			elif readChar in SAVE_KEYS:
-				return Action.save
+				return Keyboard.Event.save
 			elif readChar in PAUSE_KEYS:
-				return Action.pause
+				return Keyboard.Event.pause
 			elif readChar in NEXT_SONG_KEYS:
-				return Action.nextSong
+				return Keyboard.Event.nextSong
 			elif readChar in PREV_SONG_KEYS:
-				return Action.prevSong
+				return Keyboard.Event.prevSong
 			else:
-				return Action.none
+				return Keyboard.Event.none
 else:
 	if (OS_NAME != OS_LINUX):
 		print("The operating system \"%s\" may not be supported" % OS_NAME)
@@ -115,6 +118,16 @@ else:
 		def setNew():
 			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.new)
 	class Keyboard:
+		class Event(Enum):
+			none = -1
+			abort = 0
+			save = 1
+			pause = 2
+			restart = 3
+			nextSong = 4
+			prevSong = 5
+			nextPlaylist = 6
+			prevPlaylist = 7
 		@staticmethod
 		def init():
 			atexit.register(TerminalSettings.setOld)
@@ -123,11 +136,11 @@ else:
 		def hit():
 			return select.select([sys.stdin,],[],[],0.0)[0] != []
 		@staticmethod
-		def getAction():
+		def getEvent():
 			if Keyboard.hit():
 				readChar = sys.stdin.read(1)
 			else:
-				return Action.none
+				return Keyboard.Event.none
 
 			while Keyboard.hit():
 				readChar = sys.stdin.read(1)
@@ -137,19 +150,23 @@ else:
 					readChar += sys.stdin.read(1)
 					
 			if readChar in ABORT_KEYS:
-				return Action.abort
+				return Keyboard.Event.abort
 			elif readChar in SAVE_KEYS:
-				return Action.save
+				return Keyboard.Event.save
 			elif readChar in PAUSE_KEYS:
-				return Action.pause
-			elif readChar in NEXT_SONG_KEYS:
-				return Action.nextSong
-			elif readChar in PREV_SONG_KEYS:
-				return Action.prevSong
+				return Keyboard.Event.pause
 			elif readChar in RESTART_KEYS:
-				return Action.restart
+				return Keyboard.Event.restart
+			elif readChar in NEXT_SONG_KEYS:
+				return Keyboard.Event.nextSong
+			elif readChar in PREV_SONG_KEYS:
+				return Keyboard.Event.prevSong
+			elif readChar in NEXT_PLAYLIST_KEYS:
+				return Keyboard.Event.nextPlaylist
+			elif readChar in PREV_PLAYLIST_KEYS:
+				return Keyboard.Event.prevPlaylist
 			else:
-				return Action.none
+				return Keyboard.Event.none
 	Keyboard.init()
 
 
@@ -157,25 +174,35 @@ class Song:
 	def __init__(self, path):
 		self.path = path
 		try: self.songID3 = EasyID3(path)
-		except: self.ID3fail = True
-		self.ID3fail = False
+		except: pass
 	def __repr__(self):
-		if self.ID3fail: return self.path
-		return self.songID3["title"][0]
+		try:
+			return self.songID3["title"][0]
+		except KeyError:
+			return self.path
 	
 	def title(self):
-		if self.ID3fail or self.songID3["title"][0] == "": return chr(0x10ffff)
-		return self.songID3["title"][0]
+		try:
+			return self.songID3["title"][0]
+		except KeyError:
+			return chr(0x10ffff)
 	def artist(self):
-		if self.ID3fail or self.songID3["artist"][0] == "": return chr(0x10ffff)
-		return self.songID3["artist"][0]
+		try:
+			return self.songID3["artist"][0]
+		except KeyError:
+			return chr(0x10ffff)
 	def trackNumber(self):
-		if self.ID3fail: return 0xffffffff
 		try:
 			return int(self.songID3["tracknumber"][0])
 		except:
 			return 0xffffffff
 class Playlist:
+	class EmptyDirectory(BaseException):
+		def __init__(self, directory):
+			self.directory = directory
+		def what(self):
+			return "Provided directory %s is empty" % self.directory
+
 	def __init__(self, directory = None, playOrder = None, startSong = None):
 		if directory is None:
 			directory = "./"
@@ -185,14 +212,14 @@ class Playlist:
 		
 		self.playOrder = Order.cast(playOrder)
 		if playOrder is not None and self.playOrder is None:
-			raise RuntimeError("Invalid play order at playlist %s" % self.directory)
+			raise RuntimeError("Invalid play order \"%s\" at playlist \"%s\" of type \"%s\"" % (playOrder, self.directory, type(playOrder)))
 
 		try:
 			self.currentSong = int(startSong)
-		except ValueError:
+		except TypeError:
 			self.currentSong = None
 		if startSong is not None and self.currentSong is None:
-			raise RuntimeError("Invalid start song at playlist %s" % self.directory)
+			raise RuntimeError("Invalid start song \"%s\" at playlist \"%s\" of type \"%s\"" % (startSong, self.directory, type(playOrder)))
 
 		if self.playOrder is None or self.currentSong is None:
 			try:
@@ -211,97 +238,169 @@ class Playlist:
 			if self.currentSong is None:
 				self.currentSong = 0
 
-		loadSongs()
-		sort()
+		self.name = self.directory.split("/")[-1]
+
+		self.loadSongs()
+		self.sort()
+		self.goBack(0)
+	def __iter__(self):
+		return self
 	def __next__(self):
-		if self.currentSong == len(self.songs):
+		if self.currentSong >= len(self.songs):
 			self.currentSong = 0
-			raise StopIteration
-		return self.songs[currentSong]
 		self.currentSong += 1
+		return self.songs[self.currentSong - 1]
 	
 	def loadSongs(self):
 		self.songs = []
-		try:
-			files = os.listdir(self.directory)
-			for file in files:
-				if file[-4:] == ".mp3":
-					self.songs.append(Song(songsDirectory + file))
-		except FileNotFoundError:
-			print("No such file or directory: \"%s\"" % songsDirectory)
+		files = os.listdir(self.directory)
+		for file in files:
+			if file[-4:] == ".mp3":
+				self.songs.append(Song(self.directory + file))
 		if len(self.songs) == 0:
-			raise ValueError
+			raise Playlist.EmptyDirectory(self.directory)
 	def writeSettings(self):
 		settingsFile = open(self.directory + SETTINGS_FILENAME, "w")
 		if self.playOrder == Order.random:
-			settingsFile.write("%s\n%s" % (playOrder, 0))
+			settingsFile.write("%s\n%s" % (self.playOrder, 0))
 		else:
-			settingsFile.write("%s\n%s" % (playOrder, startSong))
+			settingsFile.write("%s\n%s" % (self.playOrder, self.currentSong - 1))
 	def sort(self, playOrder = None):
-		if playOrder = None:
+		if playOrder is None:
 			playOrder = self.playOrder
-		if	 playOrder == Order.alphabetical	self.songs = sorted(self.songs, key = lambda song: song.path)
+		elif type(playOrder) is not Order:
+			raise TypeError("Inappropiate type (%s) for play order, requires an Order value." % type(playOrder))
+		if	 playOrder == Order.path:			self.songs = sorted(self.songs, key = lambda song: song.path)
 		elif playOrder == Order.title:			self.songs = sorted(self.songs, key = lambda song: song.title())
 		elif playOrder == Order.artist:			self.songs = sorted(self.songs, key = lambda song: song.artist())
 		elif playOrder == Order.trackNumber:	self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
 		elif playOrder == Order.random:			random.shuffle(self.songs)
-	def goBack(self):
-		self.currentSong -= 2
+	def goBack(self, count = 2):
+		if count < 0:
+			raise ValueError
+		self.currentSong -= count
 		while self.currentSong < 0:
-			self.currentSong += len(songs)
+			self.currentSong += len(self.songs)
+	def play(self):
+		for song in self:
+			player = vlc.MediaPlayer(song.path)
+			player.play()
+			print("Now playing: \"%s\" by \"%s\"" % (song.title(), song.artist()))
+			paused = False
+
+			while player.get_state() != vlc.State.Ended:
+				sleep(0.1)
+
+				nextAction = Keyboard.getEvent()
+				if nextAction == Keyboard.Event.abort:
+					print("Aborting...")
+					return PlaylistsPlayer.Event.abort
+				elif nextAction == Keyboard.Event.save:
+					print("Saving...")
+					return PlaylistsPlayer.Event.save
+				elif nextAction == Keyboard.Event.pause:
+					player.pause()
+					paused = not paused
+					if paused: print("Pause")
+					else: print("Resume")
+				elif nextAction == Keyboard.Event.restart:
+					player.stop()
+					self.currentSong = 0
+					print("Restart")
+					break
+				elif nextAction == Keyboard.Event.nextSong:
+					player.stop()
+					break
+				elif nextAction == Keyboard.Event.prevSong:
+					player.stop()
+					self.goBack()
+					break
+				elif nextAction == Keyboard.Event.nextPlaylist:
+					player.stop()
+					self.goBack(1)
+					return PlaylistsPlayer.Event.next
+				elif nextAction == Keyboard.Event.prevPlaylist:
+					player.stop()
+					self.goBack(1)
+					return PlaylistsPlayer.Event.prev
+		return PlaylistsPlayer.Event.next
+class PlaylistsPlayer:
+	class Event(Enum):
+		next = 0
+		prev = 1
+		save = 2
+		abort = 3
+
+	def __init__(self, playlists):
+		self.playlists = playlists
+		self.currentPlaylist = 0
+	
+	def play(self):
+		nrPlaylists = len(self.playlists)
+		if nrPlaylists == 0:
+			return
+		
+		while 1:
+			print("Now playing playlist at \"%s\"" % self.playlists[self.currentPlaylist].directory)
+			event = self.playlists[self.currentPlaylist].play()
+			if event == PlaylistsPlayer.Event.next:
+				self.currentPlaylist += 1
+			elif event == PlaylistsPlayer.Event.prev:
+				self.currentPlaylist -= 1
+			elif event == PlaylistsPlayer.Event.save:
+				self.save()
+				return
+			elif event == PlaylistsPlayer.Event.abort:
+				return
+			
+			while self.currentPlaylist >= nrPlaylists:
+				self.currentPlaylist -= nrPlaylists
+			while self.currentPlaylist < 0:
+				self.currentPlaylist += nrPlaylists
+	def save(self):
+		for playlist in self.playlists:
+			playlist.writeSettings()
 
 
-def play(playlists):
-	while 1:
-		for playlist in playlists:
-			for song in playlist:
-				player = vlc.MediaPlayer(song.path)
-				player.play()
-				print("Now playing: \"%s\" by \"%s\"" % (song.title(), song.artist()))
-				paused = False
-
-				while player.get_state() != vlc.State.Ended:
-					sleep(0.1)
-
-					nextAction = Keyboard.getAction()
-					if nextAction == Action.abort:
-						print("Aborting...")
-						return False
-					elif nextAction == Action.save:
-						print("Saving...")
-						return True
-					elif nextAction == Action.pause:
-						player.pause()
-						paused = not paused
-						if paused: print("Pause")
-						else: print("Resume")
-					elif nextAction == Action.nextSong:
-						player.stop()
-						break
-					elif nextAction == Action.prevSong:
-						player.stop()
-						playlist.goBack()
-						break
-					elif nextAction == Action.restart:
-						player.stop()
-						currentSong = -1
-						print("Restart")
-						break
-
-
+def parseArgsList(args, allArgs):
+	try:
+		if len(args) == 0:
+			return None
+		elif len(args) == 1:
+			return Playlist(args[0])
+		elif len(args) == 2:
+			return Playlist(args[0], args[1])
+		elif len(args) == 3:
+			return Playlist(args[0], args[1], args[2])
+		else:
+			raise RuntimeError("Invalid arguments (list of arguments \"%s\" too long): \"%s\"" % (args, allArgs))
+	except Playlist.EmptyDirectory as e:
+		print(e.what())
+		return None
 def main(arguments):
-	songsDirectory, playOrder, startSong = readSettings(arguments)
-	print(songsDirectory, playOrder, startSong)
+	#arguments parsing
+	playlists = []
+	args = arguments[1:]
+	if len(args) == 0:
+		playlists.append(Playlist())
+	else:
+		tmpArgs = []
+		for arg in args:
+			if arg == "-":
+				playlist = parseArgsList(tmpArgs, args)
+				if type(playlist) is Playlist:
+					playlists.append(playlist)
+				tmpArgs = []
+			tmpArgs.append(arg)
+	playlist = parseArgsList(tmpArgs, args)
+	if type(playlist) is Playlist:
+		playlists.append(playlist)
 	
-	songs = getSongs(songsDirectory)
-
-	if   playOrder == Order.title:			songs = sorted(songs, key = lambda song: song.title())
-	elif playOrder == Order.artist:			songs = sorted(songs, key = lambda song: song.artist())
-	elif playOrder == Order.trackNumber:	songs = sorted(songs, key = lambda song: song.trackNumber())
-	elif playOrder == Order.random:			random.shuffle(songs)
-	
-	print(*songs, sep="   ")
-	playSongs(songs, songsDirectory, playOrder, startSong)
+	#playing songs
+	if len(playlists) == 0:
+		print("Nothing to play")
+	player = PlaylistsPlayer(playlists)
+	player.play()
 
 
 if __name__ == '__main__':
