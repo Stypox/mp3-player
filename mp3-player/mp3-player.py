@@ -6,13 +6,17 @@ OS_NAME = platform.system()
 OS_WINDOWS = "Windows"
 OS_LINUX = "Linux"
 
-#misc
+#music playing
 import vlc
+
+#file handling
 import os
 import fileinput
+from mutagen.easyid3 import EasyID3
+
+#misc
 import random
 from time import sleep
-from mutagen.easyid3 import EasyID3
 import sys
 from enum import Enum
 
@@ -23,8 +27,8 @@ DIRECTORIES_FILENAME = "mp3-player-directories.txt"
 PATH_ORDER_CODES = ["0", "p", "path"]
 TITLE_ORDER_CODES = ["1", "t", "title", "name"]
 ARTIST_ORDER_CODES = ["2", "a", "artist", "author"]
-TRACK_NUMBER_ORDER_CODES = ["3", "n", "numerical", "track", "track number", "tracknumber", "number"]
-RANDOM_ORDER_CODES = ["4", "r", "random", "rand"]
+TRACK_NUMBER_ORDER_CODES = ["3", "n", "number", "tracknumber"]
+RANDOM_ORDER_CODES = ["4", "r", "random"]
 class Order(Enum):
 	path = 0
 	title = 1
@@ -45,7 +49,7 @@ class Order(Enum):
 			elif playOrder in RANDOM_ORDER_CODES:		return Order.random
 		return None
 
-ABORT_KEYS = ['e', 'a']
+ABORT_KEYS = ['a', 'e']
 SAVE_KEYS = ['s']
 PAUSE_KEYS = ['p', '\n']
 RESTART_KEYS = ['r', '[H']
@@ -128,6 +132,7 @@ else:
 			prevSong = 5
 			nextPlaylist = 6
 			prevPlaylist = 7
+		
 		@staticmethod
 		def init():
 			atexit.register(TerminalSettings.setOld)
@@ -382,7 +387,17 @@ def main(arguments):
 	playlists = []
 	args = arguments[1:]
 	if len(args) == 0:
-		playlists.append(Playlist())
+		try:
+			directoriesFile = open(DIRECTORIES_FILENAME, "r")
+			for line in directoriesFile:
+				playlist = parseArgsList(line, DIRECTORIES_FILENAME)
+				if type(playlist) is Playlist:
+					playlists.append(playlist)
+			if len(playlist) == 0:
+				print("Warning: empty file \"%s\"" % DIRECTORIES_FILENAME)
+		except:
+			print("No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
+			playlists.append(Playlist())
 	else:
 		tmpArgs = []
 		for arg in args:
@@ -392,9 +407,9 @@ def main(arguments):
 					playlists.append(playlist)
 				tmpArgs = []
 			tmpArgs.append(arg)
-	playlist = parseArgsList(tmpArgs, args)
-	if type(playlist) is Playlist:
-		playlists.append(playlist)
+		playlist = parseArgsList(tmpArgs, args)
+		if type(playlist) is Playlist:
+			playlists.append(playlist)
 	
 	#playing songs
 	if len(playlists) == 0:
