@@ -247,14 +247,14 @@ class Playlist:
 
 		self.loadSongs()
 		self.sort()
-		self.goBack(0)
+		#this is done since __next__ does += 1 even the first time
+		self.currentSong -= 1
 	def __iter__(self):
 		return self
 	def __next__(self):
-		if self.currentSong >= len(self.songs):
-			self.currentSong = 0
 		self.currentSong += 1
-		return self.songs[self.currentSong - 1]
+		self.currentSong %= len(self.songs)
+		return self.songs[self.currentSong]
 	
 	def loadSongs(self):
 		self.songs = []
@@ -269,7 +269,7 @@ class Playlist:
 		if self.playOrder == Order.random:
 			settingsFile.write("%s\n%s" % (self.playOrder, 0))
 		else:
-			settingsFile.write("%s\n%s" % (self.playOrder, self.currentSong - 1))
+			settingsFile.write("%s\n%s" % (self.playOrder, self.currentSong))
 	def sort(self, playOrder = None):
 		if playOrder is None:
 			playOrder = self.playOrder
@@ -280,12 +280,6 @@ class Playlist:
 		elif playOrder == Order.artist:			self.songs = sorted(self.songs, key = lambda song: song.artist())
 		elif playOrder == Order.trackNumber:	self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
 		elif playOrder == Order.random:			random.shuffle(self.songs)
-	def goBack(self, count = 2):
-		if count < 0:
-			raise ValueError
-		self.currentSong -= count
-		while self.currentSong < 0:
-			self.currentSong += len(self.songs)
 	def play(self):
 		for song in self:
 			player = vlc.MediaPlayer(song.path)
@@ -318,15 +312,18 @@ class Playlist:
 					break
 				elif nextAction == Keyboard.Event.prevSong:
 					player.stop()
-					self.goBack()
+					#this is done instead of -= 1 since __next__ does += 1
+					self.currentSong -= 2
 					break
 				elif nextAction == Keyboard.Event.nextPlaylist:
 					player.stop()
-					self.goBack(1)
+					#this is done since __next__ does += 1 even the first time
+					self.currentSong -= 1
 					return PlaylistsPlayer.Event.next
 				elif nextAction == Keyboard.Event.prevPlaylist:
 					player.stop()
-					self.goBack(1)
+					#this is done since __next__ does += 1 even the first time
+					self.currentSong -= 1
 					return PlaylistsPlayer.Event.prev
 		return PlaylistsPlayer.Event.next
 class PlaylistsPlayer:

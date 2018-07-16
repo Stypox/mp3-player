@@ -1,6 +1,6 @@
 # Mp3 player
 Plays playlists of MP3s **sorted** by **track number**, by title, **randomly**... **Remembers the song being played** and the sorting settings before exiting. Can be controlled by pressing **keyboard keys**.
-##### Useful in combination with my youtube [playlist-downloader](https://github.com/Stypox/playlist-downloader) that saves track number, title...
+##### Useful in combination with my youtube [playlist-downloader](https://github.com/Stypox/playlist-downloader) that saves song metadata.
 
 # Keyboard controls
 The script uses **keyboard input**, instead of console input, since it's **simpler** and more **convenient**. Note that the console window must be focused for this to work. For example by pressing ``p`` the music pauses. This is the complete list of **keybindings** (**\|** means or):
@@ -33,7 +33,7 @@ The script provides several ways to **sort songs** and uses [ID3 metadata](https
 # Usage
 Choose some **directories full of MP3**. Every directory is considered a **playlist** and processed separately from others. Inside every directory a file named ``mp3-player-settings.txt`` will be created containing the **settings for that directory** (for example the song to start with the next time that directory is played). These setting, if existing, will be **overwritten by manually provided parameters**. The directories I choose are "C:/path/to/songs/" and "./Music/".  
 
-Then there are two ways to provide the script with those directories: using a **file** or using **command line arguments** (all parameters between **\[square brackets\]** are to be considered optional; **\|** means **or**)
+Then there are two ways to provide the script with those directories: using a **file** or using **command line arguments** (all parameters between **\[square brackets\]** are to be considered optional; **\|** means **or**):
 
 ## Saving directories in file
 In the directory the script is executed in create a file named ``mp3-player-directories.txt``. In that file you can insert the **directories to be played** this way:
@@ -69,3 +69,4 @@ The music should start playing! Now you can use keys to navigate through songs a
 # Notes
 * When using random sort order the order of songs is **different every time** the script is executed.
 * Start song argument is **useless** when the sort order is random, so it's **not saved** in ``mp3-player-settings.txt``.
+* When out-of-range indices are provided as "START_SONG" they will be **normalized** using modulus.
