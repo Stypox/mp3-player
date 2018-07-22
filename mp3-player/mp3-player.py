@@ -176,6 +176,9 @@ else:
 
 
 class Song:
+	invalidArtist = invalidTitle = chr(0x10ffff)
+	invalidTrackNumber = 0xffffffff
+
 	def __init__(self, path):
 		self.path = path
 		try: self.songID3 = EasyID3(path)
@@ -190,17 +193,17 @@ class Song:
 		try:
 			return self.songID3["title"][0]
 		except KeyError:
-			return chr(0x10ffff)
+			return Song.invalidTitle
 	def artist(self):
 		try:
 			return self.songID3["artist"][0]
 		except KeyError:
-			return chr(0x10ffff)
+			return Song.invalidArtist
 	def trackNumber(self):
 		try:
 			return int(self.songID3["tracknumber"][0])
 		except:
-			return 0xffffffff
+			return Song.invalidTrackNumber
 class Playlist:
 	class EmptyDirectory(BaseException):
 		def __init__(self, directory):
@@ -284,7 +287,10 @@ class Playlist:
 		for song in self:
 			player = vlc.MediaPlayer(song.path)
 			player.play()
-			print("Now playing: \"%s\" by \"%s\"" % (song.title(), song.artist()))
+			if song.artist() is Song.invalidArtist:
+				print("Playing %d/%d: \"%s\"" % (self.currentSong + 1, len(self.songs), song.title()))
+			else:
+				print("Playing %d/%d: \"%s\" by \"%s\"" % (self.currentSong + 1, len(self.songs), song.title(), song.artist()))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
@@ -304,7 +310,8 @@ class Playlist:
 					else: print("Resume")
 				elif nextAction == Keyboard.Event.restart:
 					player.stop()
-					self.currentSong = 0
+					#this is done instead of = 0 since __next__ does += 1
+					self.currentSong = -1
 					print("Restart")
 					break
 				elif nextAction == Keyboard.Event.nextSong:
