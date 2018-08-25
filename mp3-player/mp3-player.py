@@ -235,15 +235,17 @@ class Playlist:
 				filePlayOrder = settingsFile.readline().strip()
 				fileStartSong = settingsFile.readline().strip()
 
-				self.playOrder = Order.cast(filePlayOrder)
-				try:
-					self.currentSong = int(fileStartSong)
-				except ValueError: pass
+				if self.playOrder is None:
+					self.playOrder = Order.cast(filePlayOrder)
+				if self.currentSong is None:
+					try:
+						self.currentSong = int(fileStartSong)
+					except ValueError: pass
 			except FileNotFoundError: pass
 				
 			if self.playOrder is None:
 				self.playOrder = Order.default
-			if self.currentSong is None:
+			if self.currentSong is None or self.playOrder is Order.random:
 				self.currentSong = 0
 
 		self.name = self.directory.split("/")[-1]
