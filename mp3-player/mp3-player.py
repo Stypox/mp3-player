@@ -186,18 +186,18 @@ class Song:
 	def __repr__(self):
 		try:
 			return self.songID3["title"][0]
-		except KeyError:
+		except:
 			return self.path
 	
 	def title(self):
 		try:
 			return self.songID3["title"][0]
-		except KeyError:
+		except:
 			return Song.invalidTitle
 	def artist(self):
 		try:
 			return self.songID3["artist"][0]
-		except KeyError:
+		except:
 			return Song.invalidArtist
 	def trackNumber(self):
 		try:
