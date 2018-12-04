@@ -50,7 +50,7 @@ In the directory the script is executed in create a file named ``mp3-player-dire
 Here "DIRECTORY" represents the directory in which to **look for songs**; "SORT_ORDER" is **optional**, must be a **sorting code** (see [Sorting](https://gitlab.com/Stypox/mp3-player#sorting)), represents the **sort order** and defaults to track number order; "START_SONG" is **optional**, must be an **integer** (negative integers mean "count from the right"), represents the index of the **song to start with** and defaults to ``0``. **Save the file and run** the script. In this case the file could be:
 
 	C:/path/to/songs/ random
-	./Music/ artist 15
+	./Music/ modified-artist 15
 
 
 ## Passing directories as command line arguments
@@ -61,14 +61,14 @@ Here "DIRECTORY" represents the directory in which to **look for songs**; "SORT_
 Here "DIRECTORY" represents the directory in which to **look for songs**; "SORT_ORDER" is **optional**, must be a **sorting code** (see [Sorting](https://gitlab.com/Stypox/mp3-player#sorting)), represents the **sort order** and defaults to track number order; "START_SONG" is **optional**, must be an **integer** (a negative integer means "count from the right"), represents the index of the **song to start with** and defaults to ``0``. For example (command line commands):
 
 	> cd C:/mp3-player/
-	> python3 mp3-player.py C:/path/to/songs/ random - ./Music/ artist 15
+	> python3 mp3-player.py C:/path/to/songs/ random - ./Music/ modified-artist 15
 
 (*) Note that the command used for Python is **not always** ``python3``: it could be ``py``, ``python`` or others too.
 
 ## Result
 The music should start playing! Now you can use keys to navigate through songs and playlist, see [Keyboard controls](https://gitlab.com/Stypox/mp3-player#keyboard-controls).
 # Requirements
-* Requires **[Python 3.6](https://www.python.org/downloads/release/python-370/)** (I didn't test older versions, but newer ones may work).
+* Requires **[Python 3.6](https://www.python.org/downloads/release/python-360/)** (I didn't test older versions, but newer ones may work).
 * Requires the following **modules** installed: [python-vlc](https://pypi.org/project/python-vlc/); [mutagen](https://pypi.org/project/mutagen/).  
   [Install them using ``pip``](https://packaging.python.org/tutorials/installing-packages/).
 # Notes
