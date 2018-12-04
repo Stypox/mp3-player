@@ -18,7 +18,7 @@ from mutagen.easyid3 import EasyID3
 import random
 from time import sleep
 import sys
-from enum import Enum
+from enum import Enum, Flag
 
 
 SETTINGS_FILENAME = "mp3-player-settings.txt"
@@ -29,12 +29,16 @@ TITLE_ORDER_CODES = ["1", "t", "title", "name"]
 ARTIST_ORDER_CODES = ["2", "a", "artist", "author"]
 TRACK_NUMBER_ORDER_CODES = ["3", "n", "number", "tracknumber"]
 RANDOM_ORDER_CODES = ["4", "r", "random"]
-class Order(Enum):
-	path = 0
-	title = 1
-	artist = 2
-	trackNumber = 3
-	random = 4
+MODIFIED_ORDER_CODES = ["m", "modified"]
+class Order(Flag):
+	path = 1
+	title = 2
+	artist = 4
+	trackNumber = 8
+	random = 16
+	modified = 32
+	
+	none = 0
 	default = trackNumber
 	
 	@staticmethod
@@ -42,11 +46,22 @@ class Order(Enum):
 		if type(playOrder) is Order:
 			return playOrder
 		elif type(playOrder) is str:
-			if   playOrder in PATH_ORDER_CODES:			return Order.alphabetical
-			elif playOrder in TITLE_ORDER_CODES:		return Order.title
-			elif playOrder in ARTIST_ORDER_CODES:		return Order.artist
-			elif playOrder in TRACK_NUMBER_ORDER_CODES:	return Order.trackNumber
-			elif playOrder in RANDOM_ORDER_CODES:		return Order.random
+			isModified, order = None, None
+			if '-' in playOrder:
+				isModified, order = playOrder.split('-', 1)
+				if isModified in MODIFIED_ORDER_CODES:
+					isModified = Order.modified
+				else:
+					return None
+			else:
+				isModified = Order.none
+				order = playOrder
+
+			if   order in PATH_ORDER_CODES:			return Order.alphabetical | isModified
+			elif order in TITLE_ORDER_CODES:		return Order.title | isModified
+			elif order in ARTIST_ORDER_CODES:		return Order.artist | isModified
+			elif order in TRACK_NUMBER_ORDER_CODES:	return Order.trackNumber | isModified
+			elif order in RANDOM_ORDER_CODES:		return Order.random | isModified
 		return None
 
 ABORT_KEYS = ['a', 'e']
@@ -280,11 +295,21 @@ class Playlist:
 			playOrder = self.playOrder
 		elif type(playOrder) is not Order:
 			raise TypeError("Inappropiate type (%s) for play order, requires an Order value." % type(playOrder))
-		if	 playOrder == Order.path:			self.songs = sorted(self.songs, key = lambda song: song.path)
-		elif playOrder == Order.title:			self.songs = sorted(self.songs, key = lambda song: song.title())
-		elif playOrder == Order.artist:			self.songs = sorted(self.songs, key = lambda song: song.artist())
-		elif playOrder == Order.trackNumber:	self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
-		elif playOrder == Order.random:			random.shuffle(self.songs)
+
+		if playOrder & Order.random:
+			random.shuffle(self.songs)
+		else:
+			if	 playOrder & Order.path:		self.songs = sorted(self.songs, key = lambda song: song.path)
+			elif playOrder & Order.title:		self.songs = sorted(self.songs, key = lambda song: song.title())
+			elif playOrder & Order.artist:		self.songs = sorted(self.songs, key = lambda song: song.artist())
+			elif playOrder & Order.trackNumber:	self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
+			
+			if playOrder & Order.modified:
+				if len(self.songs) < 5:
+					random.shuffle(self.songs)				
+				for i in range(0, len(self.songs) - 5, 4):
+					self.songs[i:i+5] = sorted(self.songs[i:i+5], key=lambda s: random.random())
+
 	def play(self):
 		for song in self:
 			player = vlc.MediaPlayer(song.path)
