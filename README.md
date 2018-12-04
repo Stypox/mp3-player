@@ -63,12 +63,12 @@ Here "DIRECTORY" represents the directory in which to **look for songs**; "SORT_
 	> cd C:/mp3-player/
 	> python3 mp3-player.py C:/path/to/songs/ random - ./Music/ modified-artist 15
 
-(*) Note that the command used for Python is **not always** ``python3``: it could be ``py``, ``python`` or others too.
+(*) Note that the command used for Python is **not always** ``python3``: it could be ``py``, ``python``, ``python3.6`` or others too.
 
 ## Result
 The music should start playing! Now you can use keys to navigate through songs and playlist, see [Keyboard controls](https://gitlab.com/Stypox/mp3-player#keyboard-controls).
 # Requirements
-* Requires **[Python 3.6](https://www.python.org/downloads/release/python-360/)** (I didn't test older versions, but newer ones may work).
+* Requires either **[Python 3.6.x](https://www.python.org/downloads/)** or **[Python 3.7.x](https://www.python.org/downloads/)** (I didn't test older versions, but newer ones may work).
 * Requires the following **modules** installed: [python-vlc](https://pypi.org/project/python-vlc/); [mutagen](https://pypi.org/project/mutagen/).  
   [Install them using ``pip``](https://packaging.python.org/tutorials/installing-packages/).
 # Notes
