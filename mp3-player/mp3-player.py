@@ -62,7 +62,18 @@ class Order(Flag):
 			elif order in ARTIST_ORDER_CODES:		return Order.artist | isModified
 			elif order in TRACK_NUMBER_ORDER_CODES:	return Order.trackNumber | isModified
 			elif order in RANDOM_ORDER_CODES:		return Order.random | isModified
+			else:
+				try:
+					return Order(int(playOrder))
+				except:
+					return None
 		return None
+	@staticmethod
+	def toString(playOrder):
+		if playOrder & Order.modified:
+			return str(playOrder)[15:].replace('N', " n") + " with variations"
+		else:
+			return str(playOrder)[6:].replace('N', " n")
 
 ABORT_KEYS = ['a', 'e']
 SAVE_KEYS = ['s']
@@ -219,6 +230,7 @@ class Song:
 			return int(self.songID3["tracknumber"][0])
 		except:
 			return Song.invalidTrackNumber
+
 class Playlist:
 	class EmptyDirectory(BaseException):
 		def __init__(self, directory):
@@ -287,9 +299,9 @@ class Playlist:
 	def writeSettings(self):
 		settingsFile = open(self.directory + SETTINGS_FILENAME, "w")
 		if self.playOrder == Order.random:
-			settingsFile.write("%s\n%s" % (self.playOrder, 0))
+			settingsFile.write("%s\n%s" % (self.playOrder.value, 0))
 		else:
-			settingsFile.write("%s\n%s" % (self.playOrder, self.currentSong))
+			settingsFile.write("%s\n%s" % (self.playOrder.value, self.currentSong))
 	def sort(self, playOrder = None):
 		if playOrder is None:
 			playOrder = self.playOrder
@@ -360,6 +372,7 @@ class Playlist:
 					self.currentSong -= 1
 					return PlaylistsPlayer.Event.prev
 		return PlaylistsPlayer.Event.next
+
 class PlaylistsPlayer:
 	class Event(Enum):
 		next = 0
@@ -377,7 +390,9 @@ class PlaylistsPlayer:
 			return
 		
 		while 1:
-			print("Now playing playlist at \"%s\"" % self.playlists[self.currentPlaylist].directory)
+			print('Now playing playlist at "%s", sorted by %s' % (
+				self.playlists[self.currentPlaylist].directory,
+				Order.toString(self.playlists[self.currentPlaylist].playOrder)))
 			event = self.playlists[self.currentPlaylist].play()
 			if event == PlaylistsPlayer.Event.next:
 				self.currentPlaylist += 1
