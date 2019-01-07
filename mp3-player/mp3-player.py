@@ -443,7 +443,8 @@ def main(arguments):
 				print("Warning: empty file \"%s\"" % DIRECTORIES_FILENAME)
 		except:
 			print("No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
-			playlists.append(Playlist())
+			try: playlists.append(Playlist())
+			except Playlist.EmptyDirectory as e: print(e.what())
 	else:
 		tmpArgs = []
 		for arg in args:
