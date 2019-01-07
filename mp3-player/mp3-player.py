@@ -452,7 +452,8 @@ def main(arguments):
 				if type(playlist) is Playlist:
 					playlists.append(playlist)
 				tmpArgs = []
-			tmpArgs.append(arg)
+			else:
+				tmpArgs.append(arg)
 		playlist = parseArgsList(tmpArgs, args)
 		if type(playlist) is Playlist:
 			playlists.append(playlist)
