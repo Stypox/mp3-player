@@ -84,6 +84,67 @@ PREV_SONG_KEYS = ['[A', '[D']
 NEXT_PLAYLIST_KEYS = ['[6']
 PREV_PLAYLIST_KEYS = ['[5']
 
+class Options:
+	verbose = False
+	quiet = False
+	limitToConsoleWidth = False
+	consoleWidth = int(os.popen('stty size', 'r').read().split()[1])
+
+class LogLevel(Enum):
+	debug = 0,
+	info = 1,
+	warning = 2,
+	error = 3
+def log(level, *args, **kwargs):
+	if not Options.quiet:
+		if level == LogLevel.error:
+			print("[error]", *args, **kwargs)
+		else:
+			if Options.limitToConsoleWidth:
+				separator = kwargs.get('sep', " ")
+				end = kwargs.get('end', "\n")
+				newKwargs = {}
+				for key, value in kwargs.items():
+					if key != 'sep' and key != 'end':
+						newKwargs[key] = value
+
+				toPrint = ""
+				if level == LogLevel.debug and Options.verbose:
+					toPrint = "[debug] "
+				elif level == LogLevel.info:
+					toPrint = ""
+				elif level == LogLevel.warning:
+					toPrint = "[warning] "
+				else:
+					return
+					
+				firstTime = True
+				for arg in args:
+					if firstTime:
+						toPrint += arg.__str__()
+					else:
+						toPrint += separator + arg.__str__()
+					firstTime = False
+				toPrint += end
+
+				lines = toPrint.split("\n")
+				toPrint = ""
+				for line in lines:
+					if len(line) > Options.consoleWidth:
+						toPrint += line[:Options.consoleWidth]
+					else:
+						toPrint += line + "\n"
+				if toPrint[-1] == "\n":
+					toPrint = toPrint[:-1]
+
+				print(toPrint, sep="", end="", **newKwargs)
+			else:
+				if level == LogLevel.debug and Options.verbose:
+					print("[debug]", *args, **kwargs)
+				elif level == LogLevel.info:
+					print(*args, **kwargs)
+				elif level == LogLevel.warning:
+					print("[warning]", *args, **kwargs)
 
 #keyboard input
 if OS_NAME == OS_WINDOWS:
@@ -134,7 +195,7 @@ if OS_NAME == OS_WINDOWS:
 				return Keyboard.Event.none
 else:
 	if (OS_NAME != OS_LINUX):
-		print("The operating system \"%s\" may not be supported" % OS_NAME)
+		log(LogLevel.error, "The operating system \"%s\" may not be supported" % OS_NAME)
 	import termios, atexit, select
 	class TerminalSettings:
 		fileDescriptor = sys.stdin.fileno()
@@ -325,9 +386,9 @@ class Playlist:
 			player = vlc.MediaPlayer(song.path)
 			player.play()
 			if song.artist() is Song.invalidArtist:
-				print("Playing %d/%d: \"%s\"" % (self.currentSong + 1, len(self.songs), song.title()))
+				log(LogLevel.info, "Playing %d/%d: \"%s\"" % (self.currentSong + 1, len(self.songs), song.title()))
 			else:
-				print("Playing %d/%d: \"%s\" by \"%s\"" % (self.currentSong + 1, len(self.songs), song.title(), song.artist()))
+				log(LogLevel.info, "Playing %d/%d: \"%s\" by \"%s\"" % (self.currentSong + 1, len(self.songs), song.title(), song.artist()))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
@@ -335,21 +396,21 @@ class Playlist:
 
 				nextAction = Keyboard.getEvent()
 				if nextAction == Keyboard.Event.abort:
-					print("Aborting...")
+					log(LogLevel.info, "Aborting...")
 					return PlaylistsPlayer.Event.abort
 				elif nextAction == Keyboard.Event.save:
-					print("Saving...")
+					log(LogLevel.info, "Saving...")
 					return PlaylistsPlayer.Event.save
 				elif nextAction == Keyboard.Event.pause:
 					player.pause()
 					paused = not paused
-					if paused: print("Pause")
-					else: print("Resume")
+					if paused: log(LogLevel.info, "Pause")
+					else: log(LogLevel.info, "Resume")
 				elif nextAction == Keyboard.Event.restart:
 					player.stop()
 					#this is done instead of = 0 since __next__ does += 1
 					self.currentSong = -1
-					print("Restart")
+					log(LogLevel.info, "Restart")
 					break
 				elif nextAction == Keyboard.Event.nextSong:
 					player.stop()
@@ -388,7 +449,7 @@ class PlaylistsPlayer:
 			return
 		
 		while 1:
-			print('Now playing playlist at "%s", sorted by %s' % (
+			log(LogLevel.info, 'Now playing playlist at "%s", sorted by %s' % (
 				self.playlists[self.currentPlaylist].directory,
 				Order.toString(self.playlists[self.currentPlaylist].playOrder)))
 			event = self.playlists[self.currentPlaylist].play()
@@ -424,7 +485,7 @@ def parseArgsList(args, allArgs):
 		else:
 			raise RuntimeError("Invalid arguments (list of arguments \"%s\" too long): \"%s\"" % (args, allArgs))
 	except Playlist.EmptyDirectory as e:
-		print(e.what())
+		log(LogLevel.warning, e.what())
 		return None
 def main(arguments):
 	#arguments parsing
@@ -438,11 +499,11 @@ def main(arguments):
 				if type(playlist) is Playlist:
 					playlists.append(playlist)
 			if len(playlist) == 0:
-				print("Warning: empty file \"%s\"" % DIRECTORIES_FILENAME)
+				log(LogLevel.warning, "Empty file \"%s\"" % DIRECTORIES_FILENAME)
 		except:
-			print("No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
+			log(LogLevel.warning, "No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
 			try: playlists.append(Playlist("./"))
-			except Playlist.EmptyDirectory as e: print(e.what())
+			except Playlist.EmptyDirectory as e: log(LogLevel.warning, e.what())
 	else:
 		tmpArgs = []
 		for arg in args:
@@ -459,12 +520,10 @@ def main(arguments):
 	
 	#playing songs
 	if len(playlists) == 0:
-		print("Nothing to play")
+		log(LogLevel.warning, "Nothing to play")
 	player = PlaylistsPlayer(playlists)
 	player.play()
 
 
 if __name__ == '__main__':
-	print("\n%s\nSTART %s\n%s\n" % ("-" * (6 + len(sys.argv[0])), sys.argv[0], "-" * (6 + len(sys.argv[0]))))
 	main(sys.argv)
-	print("\n%s\n END %s \n%s\n" % ("-" * (6 + len(sys.argv[0])), sys.argv[0], "-" * (6 + len(sys.argv[0]))))
