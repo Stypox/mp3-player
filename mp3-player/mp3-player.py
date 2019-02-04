@@ -589,17 +589,20 @@ class PlaylistsPlayer:
 					return PlaylistsPlayer.Event.prev
 		return PlaylistsPlayer.Event.next
 
-	
 	def play(self):
 		nrPlaylists = len(self.playlists)
 		if nrPlaylists == 0:
 			return
 		
 		while 1:
-			log(LogLevel.info, 'Now playing playlist at "%s", sorted by %s' % (
-				self.playlists[self.currentPlaylist].directory,
-				Order.toString(self.playlists[self.currentPlaylist].playOrder)))
-			event = self.playlists[self.currentPlaylist].play()
+			if type(self.playlists[self.currentPlaylist]) is Playlist:
+				log(LogLevel.info, 'Now playing playlist at "%s", sorted by %s' % (
+					self.playlists[self.currentPlaylist].directory,
+					Order.toString(self.playlists[self.currentPlaylist].playOrder)))
+			else:
+				log(LogLevel.info, 'Now playing favourites, sorted by %s' % (
+					Order.toString(self.playlists[self.currentPlaylist].playOrder)))
+			event = PlaylistsPlayer.playPlaylist(self.playlists[self.currentPlaylist])
 			if event == PlaylistsPlayer.Event.next:
 				self.currentPlaylist += 1
 			elif event == PlaylistsPlayer.Event.prev:
@@ -619,56 +622,12 @@ class PlaylistsPlayer:
 			playlist.writeSettings()
 
 
-def parseArgsList(args, allArgs):
-	try:
-		if len(args) == 0:
-			return None
-		elif len(args) == 1:
-			return Playlist(args[0])
-		elif len(args) == 2:
-			return Playlist(args[0], args[1])
-		elif len(args) == 3:
-			return Playlist(args[0], args[1], args[2])
-		else:
-			raise RuntimeError("Invalid arguments (list of arguments \"%s\" too long): \"%s\"" % (args, allArgs))
-	except Playlist.EmptyDirectory as e:
-		log(LogLevel.warning, e.what())
-		return None
 def main(arguments):
 	#arguments parsing
-	playlists = []
-	args = arguments[1:]
-	if len(args) == 0:
-		try:
-			directoriesFile = open(DIRECTORIES_FILENAME, "r")
-			for line in directoriesFile:
-				playlist = parseArgsList(line, DIRECTORIES_FILENAME)
-				if type(playlist) is Playlist:
-					playlists.append(playlist)
-			if len(playlist) == 0:
-				log(LogLevel.warning, "Empty file \"%s\"" % DIRECTORIES_FILENAME)
-		except:
-			log(LogLevel.warning, "No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
-			try: playlists.append(Playlist("./"))
-			except Playlist.EmptyDirectory as e: log(LogLevel.warning, e.what())
-	else:
-		tmpArgs = []
-		for arg in args:
-			if arg == "-":
-				playlist = parseArgsList(tmpArgs, args)
-				if type(playlist) is Playlist:
-					playlists.append(playlist)
-				tmpArgs = []
-			else:
-				tmpArgs.append(arg)
-		playlist = parseArgsList(tmpArgs, args)
-		if type(playlist) is Playlist:
-			playlists.append(playlist)
-	
+	Options.parse(arguments)
+
 	#playing songs
-	if len(playlists) == 0:
-		log(LogLevel.warning, "Nothing to play")
-	player = PlaylistsPlayer(playlists)
+	player = PlaylistsPlayer(Options.playlists)
 	player.play()
 
 
