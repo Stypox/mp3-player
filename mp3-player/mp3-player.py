@@ -317,7 +317,7 @@ class Playlist:
 
 		if self.playOrder is None or self.currentSong is None:
 			try:
-				settingsFile = open(directory + SETTINGS_FILENAME, "r")
+				settingsFile = open(self.directory + SETTINGS_FILENAME, "r")
 				filePlayOrder = settingsFile.readline().strip()
 				fileStartSong = settingsFile.readline().strip()
 
