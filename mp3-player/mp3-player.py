@@ -158,6 +158,16 @@ class Options:
 			playlist = Options.parseArgsList(tmpArgs, playlistArgs)
 			if type(playlist) is Playlist:
 				Options.playlists.append(playlist)
+	
+		if len(Options.playlists) == 0 and len(Favourites.songs) == 0:
+			log(LogLevel.error, "No playlists provided and no favourite available")
+		else:
+			if len(Favourites.songs) == 0:
+				log(LogLevel.warning, "No favourite available: do not try to play them when there are none")
+			elif len(Options.playlists) == 0:
+				log(LogLevel.warning, "No playlists provided: only playing favourites")
+			Options.playlists.append(Favourites())
+	
 
 class LogLevel(Enum):
 	debug = 0,
