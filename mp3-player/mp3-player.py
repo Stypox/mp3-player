@@ -238,10 +238,8 @@ class Playlist:
 		def what(self):
 			return "Provided directory %s is empty" % self.directory
 
-	def __init__(self, directory = None, playOrder = None, startSong = None):
-		if directory is None:
-			directory = "./"
-		elif len(directory) > 0 and directory[-1] != "/":
+	def __init__(self, directory, playOrder = None, startSong = None):
+		if len(directory) > 0 and directory[-1] != "/":
 			directory += "/"
 		self.directory = directory
 		
@@ -443,7 +441,7 @@ def main(arguments):
 				print("Warning: empty file \"%s\"" % DIRECTORIES_FILENAME)
 		except:
 			print("No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
-			try: playlists.append(Playlist())
+			try: playlists.append(Playlist("./"))
 			except Playlist.EmptyDirectory as e: print(e.what())
 	else:
 		tmpArgs = []
