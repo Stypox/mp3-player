@@ -574,7 +574,7 @@ class PlaylistsPlayer:
 			player.play()
 			log(LogLevel.info,
 				("%d/%d ❤: %s" if Favourites.isFavourite(song) else "%d/%d: %s")
-				% (playlist.pos() + 1, len(playlist.songs), song))
+				% (playlist.pos() + 1, len(playlist), song))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
