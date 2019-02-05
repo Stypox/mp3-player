@@ -43,36 +43,36 @@ class Order(Flag):
 	none = 0
 	default = trackNumber
 	
-	@staticmethod
-	def cast(playOrder):
-		if type(playOrder) is Order:
+	@classmethod
+	def cast(cls, playOrder):
+		if type(playOrder) is cls:
 			return playOrder
 		elif type(playOrder) is str:
 			isModified, order = None, None
 			if '-' in playOrder:
 				isModified, order = playOrder.split('-', 1)
 				if isModified in MODIFIED_ORDER_CODES:
-					isModified = Order.modified
+					isModified = cls.modified
 				else:
 					return None
 			else:
-				isModified = Order.none
+				isModified = cls.none
 				order = playOrder
 
-			if   order in PATH_ORDER_CODES:			return Order.alphabetical | isModified
-			elif order in TITLE_ORDER_CODES:		return Order.title | isModified
-			elif order in ARTIST_ORDER_CODES:		return Order.artist | isModified
-			elif order in TRACK_NUMBER_ORDER_CODES:	return Order.trackNumber | isModified
-			elif order in RANDOM_ORDER_CODES:		return Order.random | isModified
+			if   order in PATH_ORDER_CODES:         return cls.alphabetical | isModified
+			elif order in TITLE_ORDER_CODES:        return cls.title | isModified
+			elif order in ARTIST_ORDER_CODES:       return cls.artist | isModified
+			elif order in TRACK_NUMBER_ORDER_CODES: return cls.trackNumber | isModified
+			elif order in RANDOM_ORDER_CODES:       return cls.random | isModified
 			else:
 				try:
 					return Order(int(playOrder))
 				except:
 					return None
 		return None
-	@staticmethod
-	def toString(playOrder):
-		if playOrder & Order.modified:
+	@classmethod
+	def toString(cls, playOrder):
+		if playOrder & cls.modified:
 			return str(playOrder)[15:].replace('N', " n") + " with variations"
 		else:
 			return str(playOrder)[6:].replace('N', " n")
@@ -120,13 +120,13 @@ class Options:
 			log(LogLevel.warning, e.what())
 			return None
 
-	@staticmethod
-	def parse(arguments):
+	@classmethod
+	def parse(cls, arguments):
 		arguments = arguments[1:]
-		opts = vars(Options.argParser.parse_args(arguments))
-		Options.quiet = opts['quiet']
-		Options.verbose = opts['verbose']
-		Options.limitToConsoleWidth = opts['limit_to_console_width']
+		opts = vars(cls.argParser.parse_args(arguments))
+		cls.quiet = opts['quiet']
+		cls.verbose = opts['verbose']
+		cls.limitToConsoleWidth = opts['limit_to_console_width']
 
 		favouritesPlayOrder = opts['favourites_play_order']
 		favouritesStartSong = opts['favourites_start_song']
@@ -138,37 +138,37 @@ class Options:
 			try:
 				with open(DIRECTORIES_FILENAME) as directoriesFile:
 					for line in directoriesFile:
-						playlist = Options.parseArgsList(line, DIRECTORIES_FILENAME)
+						playlist = cls.parseArgsList(line, DIRECTORIES_FILENAME)
 						if type(playlist) is Playlist:
-							Options.playlists.append(playlist)
+							cls.playlists.append(playlist)
 					if len(playlist) == 0:
 						log(LogLevel.warning, "Empty file \"%s\"" % DIRECTORIES_FILENAME)
 			except:
 				log(LogLevel.warning, "No command line arguments and no \"%s\" file found: using current directory" % DIRECTORIES_FILENAME)
-				try: Options.playlists.append(Playlist("./"))
+				try: cls.playlists.append(Playlist("./"))
 				except Playlist.EmptyDirectory as e: log(LogLevel.warning, e.what())
 		else:
 			tmpArgs = []
 			for arg in playlistArgs:
 				if arg == "-":
-					playlist = Options.parseArgsList(tmpArgs, playlistArgs)
+					playlist = cls.parseArgsList(tmpArgs, playlistArgs)
 					if type(playlist) is Playlist:
-						Options.playlists.append(playlist)
+						cls.playlists.append(playlist)
 					tmpArgs = []
 				else:
 					tmpArgs.append(arg)
-			playlist = Options.parseArgsList(tmpArgs, playlistArgs)
+			playlist = cls.parseArgsList(tmpArgs, playlistArgs)
 			if type(playlist) is Playlist:
-				Options.playlists.append(playlist)
+				cls.playlists.append(playlist)
 	
-		if len(Options.playlists) == 0 and len(Favourites.songs) == 0:
+		if len(cls.playlists) == 0 and len(Favourites.songs) == 0:
 			log(LogLevel.error, "No playlists provided and no favourite available")
 		else:
 			if len(Favourites.songs) == 0:
 				log(LogLevel.warning, "No favourite available: do not try to play them when there are none")
-			elif len(Options.playlists) == 0:
+			elif len(cls.playlists) == 0:
 				log(LogLevel.warning, "No playlists provided: only playing favourites")
-			Options.playlists.append(Favourites())
+			cls.playlists.append(Favourites())
 
 class LogLevel(Enum):
 	debug = 0,
@@ -239,46 +239,36 @@ class Event(Enum):
 	prevPlaylist = 7
 	favourite = 8
 
-	@staticmethod
-	def generate(readChar):
-		if readChar in ABORT_KEYS:
-			return Event.abort
-		elif readChar in SAVE_KEYS:
-			return Event.save
-		elif readChar in PAUSE_KEYS:
-			return Event.pause
-		elif readChar in RESTART_KEYS:
-			return Event.restart
-		elif readChar in NEXT_SONG_KEYS:
-			return Event.nextSong
-		elif readChar in PREV_SONG_KEYS:
-			return Event.prevSong
-		elif readChar in NEXT_PLAYLIST_KEYS:
-			return Event.nextPlaylist
-		elif readChar in PREV_PLAYLIST_KEYS:
-			return Event.prevPlaylist
-		elif readChar in FAVOURITE_KEYS:
-			return Event.favourite
-		else:
-			return Event.none
+	@classmethod
+	def generate(cls, readChar):
+		if readChar in ABORT_KEYS:           return cls.abort
+		elif readChar in SAVE_KEYS:          return cls.save
+		elif readChar in PAUSE_KEYS:         return cls.pause
+		elif readChar in RESTART_KEYS:       return cls.restart
+		elif readChar in NEXT_SONG_KEYS:     return cls.nextSong
+		elif readChar in PREV_SONG_KEYS:     return cls.prevSong
+		elif readChar in NEXT_PLAYLIST_KEYS: return cls.nextPlaylist
+		elif readChar in PREV_PLAYLIST_KEYS: return cls.prevPlaylist
+		elif readChar in FAVOURITE_KEYS:     return cls.favourite
+		else:                                return cls.none
 
 if OS_NAME == OS_WINDOWS:
 	import msvcrt
 	class Keyboard:
-		@staticmethod
-		def init():
+		@classmethod
+		def init(cls):
 			pass
 		@staticmethod
 		def hit():
 			return msvcrt.kbhit()
-		@staticmethod
-		def getEvent():
-			if Keyboard.hit():
+		@classmethod
+		def getEvent(cls):
+			if cls.hit():
 				readChar = sys.stdin.read(1)
 			else:
 				return Event.none
 
-			while Keyboard.hit():
+			while cls.hit():
 				readChar = sys.stdin.read(1)
 			if readChar == '\x1B':				#TODO not sure if this works on windows
 				readChar = sys.stdin.read(1)
@@ -295,28 +285,28 @@ else:
 		old = termios.tcgetattr(fileDescriptor)
 		new = old[:3] + [old[3] & ~termios.ICANON & ~termios.ECHO] + old[4:]
 
-		@staticmethod
-		def setOld():
-			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.old)
-		@staticmethod
-		def setNew():
-			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.new)
+		@classmethod
+		def setOld(cls):
+			termios.tcsetattr(cls.fileDescriptor, termios.TCSAFLUSH, cls.old)
+		@classmethod
+		def setNew(cls):
+			termios.tcsetattr(cls.fileDescriptor, termios.TCSAFLUSH, cls.new)
 	class Keyboard:
-		@staticmethod
-		def init():
+		@classmethod
+		def init(cls):
 			atexit.register(TerminalSettings.setOld)
 			TerminalSettings.setNew()
 		@staticmethod
 		def hit():
 			return select.select([sys.stdin,],[],[],0.0)[0] != []
-		@staticmethod
-		def getEvent():
-			if Keyboard.hit():
+		@classmethod
+		def getEvent(cls):
+			if cls.hit():
 				readChar = sys.stdin.read(1)
 			else:
 				return Event.none
 
-			while Keyboard.hit():
+			while cls.hit():
 				readChar = sys.stdin.read(1)
 			if readChar == '\x1B':
 				readChar = sys.stdin.read(1)
@@ -324,7 +314,7 @@ else:
 					readChar += sys.stdin.read(1)
 			
 			return Event.generate(readChar)
-					
+
 	Keyboard.init()
 
 
@@ -366,38 +356,38 @@ class Song:
 			return Song.invalidTrackNumber
 
 class Favourites:
-	@staticmethod
-	def setup(playOrder, startSong):
-		songFilenames, filePlayOrder, fileStartSong = Favourites.loadFromFile()
+	@classmethod
+	def setup(cls, playOrder, startSong):
+		songFilenames, filePlayOrder, fileStartSong = cls.loadFromFile()
 
-		Favourites.songs = []
+		cls.songs = []
 		for songFilename in songFilenames:
 			if os.path.exists(songFilename):
-				Favourites.songs.append(Song(songFilename))
+				cls.songs.append(Song(songFilename))
 			else:
 				log(LogLevel.debug, "Discarding favourite song at \"%s\": no such file" % songFilename)
-		if len(Favourites.songs) == 0:
-			log(LogLevel.warning, "Favourites playlist is empty")
+		if len(cls.songs) == 0:
+			log(LogLevel.warning, "cls playlist is empty")
 		
 		if playOrder is None:
 			if filePlayOrder is None:
-				Favourites.playOrder = Order.default
+				cls.playOrder = Order.default
 			else:
-				Favourites.playOrder = filePlayOrder
+				cls.playOrder = filePlayOrder
 		else:
-			Favourites.playOrder = Order.cast(playOrder)
-			if playOrder is not None and Favourites.playOrder is None:
+			cls.playOrder = Order.cast(playOrder)
+			if playOrder is not None and cls.playOrder is None:
 				raise RuntimeError("Invalid play order \"%s\" for favourites of type \"%s\"" % (playOrder, type(playOrder)))
 		
 		if startSong is None:
 			if fileStartSong is None:
-				Favourites.currentSong = 0
+				cls.currentSong = 0
 			else:
-				Favourites.currentSong = fileStartSong
+				cls.currentSong = fileStartSong
 		else:
-			Favourites.playOrder = startSong
+			cls.playOrder = startSong
 		#this is done since __next__ does += 1 even the first time
-		Favourites.currentSong -= 1
+		cls.currentSong -= 1
 	def __iter__(self):
 		return self
 	def __next__(self):
@@ -405,8 +395,8 @@ class Favourites:
 		Favourites.currentSong %= len(Favourites.songs)
 		return Favourites.songs[Favourites.currentSong]
 
-	@staticmethod
-	def loadFromFile():
+	@classmethod
+	def loadFromFile(cls):
 		try:
 			with open(FAVOURITES_FILENAME) as favouritesFile:
 				playOrder = favouritesFile.readline().strip()
@@ -421,25 +411,25 @@ class Favourites:
 				return (songFilenames, playOrder, startSong)
 		except FileNotFoundError:
 			return ([], None, None)
-	@staticmethod
-	def writeSettings():
+	@classmethod
+	def writeSettings(cls):
 		with open(FAVOURITES_FILENAME, "w") as favouritesFile:
-			if Favourites.playOrder == Order.random:
-				favouritesFile.write("%s\n%s\n" % (Favourites.playOrder.value, 0))
+			if cls.playOrder == Order.random:
+				favouritesFile.write("%s\n%s\n" % (cls.playOrder.value, 0))
 			else:
-				favouritesFile.write("%s\n%s\n" % (Favourites.playOrder.value, Favourites.currentSong))
-			favouritesFile.write("\n".join([os.path.abspath(song.path) for song in Favourites.songs]))
+				favouritesFile.write("%s\n%s\n" % (cls.playOrder.value, cls.currentSong))
+			favouritesFile.write("\n".join([os.path.abspath(song.path) for song in cls.songs]))
 				
-	@staticmethod
-	def add(song):
-		Favourites.songs.append(song)
-	@staticmethod
-	def remove(song):
-		Favourites.songs = [oldSong for oldSong in Favourites.songs if oldSong != song]
+	@classmethod
+	def add(cls, song):
+		cls.songs.append(song)
+	@classmethod
+	def remove(cls, song):
+		cls.songs = [oldSong for oldSong in cls.songs if oldSong != song]
 
-	@staticmethod
-	def isFavourite(song):
-		return song in Favourites.songs
+	@classmethod
+	def isFavourite(cls, song):
+		return song in cls.songs
 
 class Playlist:
 	class EmptyDirectory(BaseException):
@@ -554,8 +544,8 @@ class PlaylistsPlayer:
 		self.playlists = playlists
 		self.currentPlaylist = 0
 	
-	@staticmethod
-	def playPlaylist(playlist):
+	@classmethod
+	def playPlaylist(cls, playlist):
 		for song in playlist:
 			player = vlc.MediaPlayer(song.path)
 			player.play()
@@ -570,10 +560,10 @@ class PlaylistsPlayer:
 				nextAction = Keyboard.getEvent()
 				if nextAction == Event.abort:
 					log(LogLevel.info, "Aborting...")
-					return PlaylistsPlayer.Event.abort
+					return cls.Event.abort
 				elif nextAction == Event.save:
 					log(LogLevel.info, "Saving...")
-					return PlaylistsPlayer.Event.save
+					return cls.Event.save
 				elif nextAction == Event.pause:
 					player.pause()
 					paused = not paused
@@ -597,12 +587,12 @@ class PlaylistsPlayer:
 					player.stop()
 					#this is done since __next__ does += 1
 					playlist.currentSong -= 1
-					return PlaylistsPlayer.Event.next
+					return cls.Event.next
 				elif nextAction == Event.prevPlaylist:
 					player.stop()
 					#this is done since __next__ does += 1
 					playlist.currentSong -= 1
-					return PlaylistsPlayer.Event.prev
+					return cls.Event.prev
 				elif nextAction == Event.favourite:
 					if Favourites.isFavourite(song):
 						Favourites.remove(song)
@@ -616,7 +606,7 @@ class PlaylistsPlayer:
 						Favourites.add(song)
 						log(LogLevel.info, "New favourite: %s" % song)
 
-		return PlaylistsPlayer.Event.next
+		return cls.Event.next
 
 	def play(self):
 		nrPlaylists = len(self.playlists)
