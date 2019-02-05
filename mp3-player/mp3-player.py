@@ -355,6 +355,21 @@ class Song:
 		except:
 			return Song.invalidTrackNumber
 
+def sortPlaylist(playlist):
+	if playlist.playOrder & Order.random:
+		random.shuffle(playlist.songs)
+	else:
+		if   playlist.playOrder & Order.path:        playlist.songs = sorted(playlist.songs, key = lambda song: song.path)
+		elif playlist.playOrder & Order.title:       playlist.songs = sorted(playlist.songs, key = lambda song: song.title())
+		elif playlist.playOrder & Order.artist:      playlist.songs = sorted(playlist.songs, key = lambda song: song.artist())
+		elif playlist.playOrder & Order.trackNumber: playlist.songs = sorted(playlist.songs, key = lambda song: song.trackNumber())
+		
+		if playlist.playOrder & Order.modified:
+			if len(playlist.songs) < 5:
+				random.shuffle(playlist.songs)				
+			for i in range(0, len(playlist.songs) - 5, 4):
+				playlist.songs[i:i+5] = sorted(playlist.songs[i:i+5], key=lambda s: random.random())
+
 class Favourites:
 	@classmethod
 	def setup(cls, playOrder, startSong):
@@ -388,6 +403,8 @@ class Favourites:
 			cls.currentSong = startSong
 		#this is done since __next__ does += 1 even the first time
 		cls.currentSong -= 1
+
+		sortPlaylist(Favourites)
 
 	def __iter__(self):
 		return self
@@ -505,7 +522,7 @@ class Playlist:
 		else:
 			raise TypeError()
 
-		self.sort()
+		sortPlaylist(self)
 		#this is done since __next__ does += 1 even the first time
 		self.currentSong -= 1
 	def __iter__(self):
@@ -538,25 +555,6 @@ class Playlist:
 				settingsFile.write("%s\n%s" % (self.playOrder.value, 0))
 			else:
 				settingsFile.write("%s\n%s" % (self.playOrder.value, self.currentSong))
-	def sort(self, playOrder = None):
-		if playOrder is None:
-			playOrder = self.playOrder
-		elif type(playOrder) is not Order:
-			raise TypeError("Inappropiate type (%s) for play order, requires an Order value." % type(playOrder))
-
-		if playOrder & Order.random:
-			random.shuffle(self.songs)
-		else:
-			if   playOrder & Order.path:        self.songs = sorted(self.songs, key = lambda song: song.path)
-			elif playOrder & Order.title:       self.songs = sorted(self.songs, key = lambda song: song.title())
-			elif playOrder & Order.artist:      self.songs = sorted(self.songs, key = lambda song: song.artist())
-			elif playOrder & Order.trackNumber: self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
-			
-			if playOrder & Order.modified:
-				if len(self.songs) < 5:
-					random.shuffle(self.songs)				
-				for i in range(0, len(self.songs) - 5, 4):
-					self.songs[i:i+5] = sorted(self.songs[i:i+5], key=lambda s: random.random())
 
 class PlaylistsPlayer:
 	class Event(Enum):
