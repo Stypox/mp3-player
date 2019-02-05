@@ -401,10 +401,10 @@ class Favourites:
 				cls.currentSong = fileStartSong
 		else:
 			cls.currentSong = startSong
-		#this is done since __next__ does += 1 even the first time
-		cls.currentSong -= 1
 
 		sortPlaylist(Favourites)
+		# this is done since __next__ does += 1 even the first time
+		cls.currentSong -= 1
 
 	def __iter__(self):
 		return self
@@ -523,7 +523,7 @@ class Playlist:
 			raise TypeError()
 
 		sortPlaylist(self)
-		#this is done since __next__ does += 1 even the first time
+		# this is done since __next__ does += 1 even the first time
 		self.currentSong -= 1
 	def __iter__(self):
 		return self
