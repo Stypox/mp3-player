@@ -385,15 +385,31 @@ class Favourites:
 			else:
 				cls.currentSong = fileStartSong
 		else:
-			cls.playOrder = startSong
+			cls.currentSong = startSong
 		#this is done since __next__ does += 1 even the first time
 		cls.currentSong -= 1
+
 	def __iter__(self):
 		return self
 	def __next__(self):
 		Favourites.currentSong += 1
 		Favourites.currentSong %= len(Favourites.songs)
 		return Favourites.songs[Favourites.currentSong]
+	def __len__(self):
+		return len(Favourites.songs)
+	@property
+	def currentSong(self):
+		return Favourites.currentSong
+
+	@classmethod
+	def move(cls, delta):
+		cls.currentSong += delta
+	@classmethod
+	def setPos(cls, value):
+		cls.currentSong = value
+	@classmethod
+	def pos(cls):
+		return cls.currentSong
 
 	@classmethod
 	def loadFromFile(cls):
@@ -498,7 +514,16 @@ class Playlist:
 		self.currentSong += 1
 		self.currentSong %= len(self.songs)
 		return self.songs[self.currentSong]
-	
+	def __len__(self):
+		return len(self.songs)
+
+	def move(self, delta):
+		self.currentSong += delta
+	def setPos(self, value):
+		self.currentSong = value
+	def pos(self):
+		return self.currentSong
+
 	def loadSongs(self):
 		self.songs = []
 		files = os.listdir(self.directory)
@@ -551,7 +576,7 @@ class PlaylistsPlayer:
 			player.play()
 			log(LogLevel.info,
 				("%d/%d ❤: %s" if Favourites.isFavourite(song) else "%d/%d: %s")
-				% (playlist.currentSong + 1, len(playlist.songs), song))
+				% (playlist.pos() + 1, len(playlist.songs), song))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
@@ -571,27 +596,28 @@ class PlaylistsPlayer:
 					else: log(LogLevel.info, "Resume")
 				elif nextAction == Event.restart:
 					player.stop()
-					#this is done instead of = 0 since __next__ does += 1
-					playlist.currentSong = -1
+					# setting to -1 since __next__ does += 1
+					playlist.setPos(-1)
 					log(LogLevel.info, "Restart")
 					break
 				elif nextAction == Event.nextSong:
 					player.stop()
+					# __next__ does += 1
 					break
 				elif nextAction == Event.prevSong:
 					player.stop()
-					#this is done instead of -= 1 since __next__ does += 1
-					playlist.currentSong -= 2
+					# moving by -2 since __next__ does += 1
+					playlist.move(-2)
 					break
 				elif nextAction == Event.nextPlaylist:
 					player.stop()
-					#this is done since __next__ does += 1
-					playlist.currentSong -= 1
+					# moving by -1 since __next__ does += 1
+					playlist.move(-1)
 					return cls.Event.next
 				elif nextAction == Event.prevPlaylist:
 					player.stop()
-					#this is done since __next__ does += 1
-					playlist.currentSong -= 1
+					# moving by -1 since __next__ does += 1
+					playlist.move(-1)
 					return cls.Event.prev
 				elif nextAction == Event.favourite:
 					if Favourites.isFavourite(song):
@@ -599,8 +625,8 @@ class PlaylistsPlayer:
 						log(LogLevel.info, "Removed favourite: %s" % song)
 						if type(playlist) is Favourites:
 							player.stop()
-							#this is done since __next__ does += 1
-							playlist.currentSong -= 1
+							# moving by -1 since __next__ does += 1
+							playlist.move(-1)
 							break
 					else:
 						Favourites.add(song)
