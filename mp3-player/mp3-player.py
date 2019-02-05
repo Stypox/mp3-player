@@ -522,10 +522,10 @@ class Playlist:
 		if playOrder & Order.random:
 			random.shuffle(self.songs)
 		else:
-			if	 playOrder & Order.path:		self.songs = sorted(self.songs, key = lambda song: song.path)
-			elif playOrder & Order.title:		self.songs = sorted(self.songs, key = lambda song: song.title())
-			elif playOrder & Order.artist:		self.songs = sorted(self.songs, key = lambda song: song.artist())
-			elif playOrder & Order.trackNumber:	self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
+			if   playOrder & Order.path:        self.songs = sorted(self.songs, key = lambda song: song.path)
+			elif playOrder & Order.title:       self.songs = sorted(self.songs, key = lambda song: song.title())
+			elif playOrder & Order.artist:      self.songs = sorted(self.songs, key = lambda song: song.artist())
+			elif playOrder & Order.trackNumber: self.songs = sorted(self.songs, key = lambda song: song.trackNumber())
 			
 			if playOrder & Order.modified:
 				if len(self.songs) < 5:
