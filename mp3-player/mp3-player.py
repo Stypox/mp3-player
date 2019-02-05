@@ -382,7 +382,7 @@ class Favourites:
 			else:
 				log(LogLevel.debug, "Discarding favourite song at \"%s\": no such file" % songFilename)
 		if len(cls.songs) == 0:
-			log(LogLevel.warning, "cls playlist is empty")
+			log(LogLevel.warning, "Favourites playlist is empty")
 		
 		if playOrder is None:
 			if filePlayOrder is None:
