@@ -85,6 +85,8 @@ NEXT_SONG_KEYS = ['[B', '[C']
 PREV_SONG_KEYS = ['[A', '[D']
 NEXT_PLAYLIST_KEYS = ['[6']
 PREV_PLAYLIST_KEYS = ['[5']
+FAVOURITE_KEYS = ['f', '+', '*']
+
 
 class Options:
 	verbose = False
@@ -167,7 +169,6 @@ class Options:
 			elif len(Options.playlists) == 0:
 				log(LogLevel.warning, "No playlists provided: only playing favourites")
 			Options.playlists.append(Favourites())
-	
 
 class LogLevel(Enum):
 	debug = 0,
@@ -226,20 +227,44 @@ def log(level, *args, **kwargs):
 					print("[warning]", *args, **kwargs)
 
 #keyboard input
+class Event(Enum):
+	none = -1
+	abort = 0
+	save = 1
+	pause = 2
+	restart = 3
+	nextSong = 4
+	prevSong = 5
+	nextPlaylist = 6
+	prevPlaylist = 7
+	favourite = 8
+
+	@staticmethod
+	def generate(readChar):
+		if readChar in ABORT_KEYS:
+			return Event.abort
+		elif readChar in SAVE_KEYS:
+			return Event.save
+		elif readChar in PAUSE_KEYS:
+			return Event.pause
+		elif readChar in RESTART_KEYS:
+			return Event.restart
+		elif readChar in NEXT_SONG_KEYS:
+			return Event.nextSong
+		elif readChar in PREV_SONG_KEYS:
+			return Event.prevSong
+		elif readChar in NEXT_PLAYLIST_KEYS:
+			return Event.nextPlaylist
+		elif readChar in PREV_PLAYLIST_KEYS:
+			return Event.prevPlaylist
+		elif readChar in FAVOURITE_KEYS:
+			return Event.favourite
+		else:
+			return Event.none
+
 if OS_NAME == OS_WINDOWS:
 	import msvcrt
 	class Keyboard:
-		class Event(Enum):
-			none = -1
-			abort = 0
-			save = 1
-			pause = 2
-			restart = 3
-			nextSong = 4
-			prevSong = 5
-			nextPlaylist = 6
-			prevPlaylist = 7
-		
 		@staticmethod
 		def init():
 			pass
@@ -251,7 +276,7 @@ if OS_NAME == OS_WINDOWS:
 			if Keyboard.hit():
 				readChar = sys.stdin.read(1)
 			else:
-				return Keyboard.Event.none
+				return Event.none
 
 			while Keyboard.hit():
 				readChar = sys.stdin.read(1)
@@ -259,19 +284,8 @@ if OS_NAME == OS_WINDOWS:
 				readChar = sys.stdin.read(1)
 				if readChar == '[':
 					readChar += sys.stdin.read(1)
-					
-			if readChar in ABORT_KEYS:
-				return Keyboard.Event.abort
-			elif readChar in SAVE_KEYS:
-				return Keyboard.Event.save
-			elif readChar in PAUSE_KEYS:
-				return Keyboard.Event.pause
-			elif readChar in NEXT_SONG_KEYS:
-				return Keyboard.Event.nextSong
-			elif readChar in PREV_SONG_KEYS:
-				return Keyboard.Event.prevSong
-			else:
-				return Keyboard.Event.none
+
+			return Event.generate(readChar)
 else:
 	if (OS_NAME != OS_LINUX):
 		log(LogLevel.error, "The operating system \"%s\" may not be supported" % OS_NAME)
@@ -288,17 +302,6 @@ else:
 		def setNew():
 			termios.tcsetattr(TerminalSettings.fileDescriptor, termios.TCSAFLUSH, TerminalSettings.new)
 	class Keyboard:
-		class Event(Enum):
-			none = -1
-			abort = 0
-			save = 1
-			pause = 2
-			restart = 3
-			nextSong = 4
-			prevSong = 5
-			nextPlaylist = 6
-			prevPlaylist = 7
-		
 		@staticmethod
 		def init():
 			atexit.register(TerminalSettings.setOld)
@@ -311,7 +314,7 @@ else:
 			if Keyboard.hit():
 				readChar = sys.stdin.read(1)
 			else:
-				return Keyboard.Event.none
+				return Event.none
 
 			while Keyboard.hit():
 				readChar = sys.stdin.read(1)
@@ -319,25 +322,9 @@ else:
 				readChar = sys.stdin.read(1)
 				if readChar == '[':
 					readChar += sys.stdin.read(1)
+			
+			return Event.generate(readChar)
 					
-			if readChar in ABORT_KEYS:
-				return Keyboard.Event.abort
-			elif readChar in SAVE_KEYS:
-				return Keyboard.Event.save
-			elif readChar in PAUSE_KEYS:
-				return Keyboard.Event.pause
-			elif readChar in RESTART_KEYS:
-				return Keyboard.Event.restart
-			elif readChar in NEXT_SONG_KEYS:
-				return Keyboard.Event.nextSong
-			elif readChar in PREV_SONG_KEYS:
-				return Keyboard.Event.prevSong
-			elif readChar in NEXT_PLAYLIST_KEYS:
-				return Keyboard.Event.nextPlaylist
-			elif readChar in PREV_PLAYLIST_KEYS:
-				return Keyboard.Event.prevPlaylist
-			else:
-				return Keyboard.Event.none
 	Keyboard.init()
 
 
@@ -351,10 +338,17 @@ class Song:
 		except: log(LogLevel.debug, "Unable to read ID3 tags for song at \"%s\"" % path)
 	def __repr__(self):
 		try:
-			return self.songID3["title"][0]
+			artist = self.artist()
+			if artist is Song.invalidArtist:
+				return self.songID3["title"][0]
+			return "%s - %s" % (artist, self.songID3["title"][0])
 		except:
 			return self.path
-	
+	def __eq__(self, other):
+		return os.path.abspath(self.path) == os.path.abspath(other.path)
+	def __ne__(self, other):
+		return not self == other
+
 	def title(self):
 		try:
 			return self.songID3["title"][0]
@@ -376,7 +370,12 @@ class Favourites:
 	def setup(playOrder, startSong):
 		songFilenames, filePlayOrder, fileStartSong = Favourites.loadFromFile()
 
-		Favourites.songs = [Song(songFilename) for songFilename in songFilenames]
+		Favourites.songs = []
+		for songFilename in songFilenames:
+			if os.path.exists(songFilename):
+				Favourites.songs.append(Song(songFilename))
+			else:
+				log(LogLevel.debug, "Discarding favourite song at \"%s\": no such file" % songFilename)
 		if len(Favourites.songs) == 0:
 			log(LogLevel.warning, "Favourites playlist is empty")
 		
@@ -429,10 +428,18 @@ class Favourites:
 				favouritesFile.write("%s\n%s\n" % (Favourites.playOrder.value, 0))
 			else:
 				favouritesFile.write("%s\n%s\n" % (Favourites.playOrder.value, Favourites.currentSong))
-			favouritesFile.write("\n".join([song.path for song in Favourites.songs]))
+			favouritesFile.write("\n".join([os.path.abspath(song.path) for song in Favourites.songs]))
+				
 	@staticmethod
 	def add(song):
 		Favourites.songs.append(song)
+	@staticmethod
+	def remove(song):
+		Favourites.songs = [oldSong for oldSong in Favourites.songs if oldSong != song]
+
+	@staticmethod
+	def isFavourite(song):
+		return song in Favourites.songs
 
 class Playlist:
 	class EmptyDirectory(BaseException):
@@ -552,51 +559,63 @@ class PlaylistsPlayer:
 		for song in playlist:
 			player = vlc.MediaPlayer(song.path)
 			player.play()
-			if song.artist() is Song.invalidArtist:
-				log(LogLevel.info, "Playing %d/%d: \"%s\"" % (playlist.currentSong + 1, len(playlist.songs), song.title()))
-			else:
-				log(LogLevel.info, "Playing %d/%d: \"%s\" by \"%s\"" % (playlist.currentSong + 1, len(playlist.songs), song.title(), song.artist()))
+			log(LogLevel.info,
+				("%d/%d ❤: %s" if Favourites.isFavourite(song) else "%d/%d: %s")
+				% (playlist.currentSong + 1, len(playlist.songs), song))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
 				sleep(0.1)
 
 				nextAction = Keyboard.getEvent()
-				if nextAction == Keyboard.Event.abort:
+				if nextAction == Event.abort:
 					log(LogLevel.info, "Aborting...")
 					return PlaylistsPlayer.Event.abort
-				elif nextAction == Keyboard.Event.save:
+				elif nextAction == Event.save:
 					log(LogLevel.info, "Saving...")
 					return PlaylistsPlayer.Event.save
-				elif nextAction == Keyboard.Event.pause:
+				elif nextAction == Event.pause:
 					player.pause()
 					paused = not paused
 					if paused: log(LogLevel.info, "Pause")
 					else: log(LogLevel.info, "Resume")
-				elif nextAction == Keyboard.Event.restart:
+				elif nextAction == Event.restart:
 					player.stop()
 					#this is done instead of = 0 since __next__ does += 1
 					playlist.currentSong = -1
 					log(LogLevel.info, "Restart")
 					break
-				elif nextAction == Keyboard.Event.nextSong:
+				elif nextAction == Event.nextSong:
 					player.stop()
 					break
-				elif nextAction == Keyboard.Event.prevSong:
+				elif nextAction == Event.prevSong:
 					player.stop()
 					#this is done instead of -= 1 since __next__ does += 1
 					playlist.currentSong -= 2
 					break
-				elif nextAction == Keyboard.Event.nextPlaylist:
+				elif nextAction == Event.nextPlaylist:
 					player.stop()
-					#this is done since __next__ does += 1 even the first time
+					#this is done since __next__ does += 1
 					playlist.currentSong -= 1
 					return PlaylistsPlayer.Event.next
-				elif nextAction == Keyboard.Event.prevPlaylist:
+				elif nextAction == Event.prevPlaylist:
 					player.stop()
-					#this is done since __next__ does += 1 even the first time
+					#this is done since __next__ does += 1
 					playlist.currentSong -= 1
 					return PlaylistsPlayer.Event.prev
+				elif nextAction == Event.favourite:
+					if Favourites.isFavourite(song):
+						Favourites.remove(song)
+						log(LogLevel.info, "Removed favourite: %s" % song)
+						if type(playlist) is Favourites:
+							player.stop()
+							#this is done since __next__ does += 1
+							playlist.currentSong -= 1
+							break
+					else:
+						Favourites.add(song)
+						log(LogLevel.info, "New favourite: %s" % song)
+
 		return PlaylistsPlayer.Event.next
 
 	def play(self):
