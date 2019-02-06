@@ -1,6 +1,6 @@
 # Mp3 player
 Plays playlists of MP3s **sorted** by **track number**, by title, **randomly**... **Remembers the song being played** and the sorting settings before exiting. Can be controlled by pressing **keyboard keys**.
-##### Useful in combination with my youtube [playlist-downloader](https://gitlab.com/Stypox/playlist-downloader) that saves song metadata.
+##### Useful in combination with my youtube [playlist-downloader](https://github.com/Stypox/song-downloader) that saves song metadata.
 
 # Keyboard controls
 The script uses **keyboard input**, instead of console input, since it's **simpler** and more **convenient**. Note that the console window must be focused for this to work. For example by pressing ``p`` the music pauses. This is the complete list of **keybindings** (**\|** means or):
