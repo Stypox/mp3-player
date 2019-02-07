@@ -457,6 +457,7 @@ class Favourites:
 	def add(cls, song):
 		cls.songs.append(song)
 		cls.writeSettings()
+		sortPlaylist(cls)
 	@classmethod
 	def remove(cls, song):
 		cls.songs = [oldSong for oldSong in cls.songs if oldSong != song]
