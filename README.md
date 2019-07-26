@@ -67,10 +67,10 @@ Here "DIRECTORY" represents the directory in which to **look for songs**; "SORT_
 
 ## Result
 The music should start playing! Now you can use keys to navigate through songs and playlist, see [Keyboard controls](#keyboard-controls).
-# Requirements
+# Dependencies
 * Requires either **[Python 3.6.x](https://www.python.org/downloads/)** or **[Python 3.7.x](https://www.python.org/downloads/)** (I didn't test older versions, but newer ones may work).
-* Requires the following **modules** installed: [python-vlc](https://pypi.org/project/python-vlc/); [mutagen](https://pypi.org/project/mutagen/).  
-  [Install them using ``pip``](https://packaging.python.org/tutorials/installing-packages/).
+* Install dependencies from [requirements.txt](requirements.txt) using this command: `python3 -m pip install -r requirements.txt`  
+It will install the following [`pip`](https://packaging.python.org/tutorials/installing-packages/) **modules**: [python-vlc](https://pypi.org/project/python-vlc/); [mutagen](https://pypi.org/project/mutagen/).
 # Notes
 * When using random sort order the order of songs is **different every time** the script is executed.
 * Start song argument is **useless** when the sort order is random, so it's **not saved** in ``mp3-player-settings.txt``.
