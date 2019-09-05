@@ -77,7 +77,7 @@ class Order(Flag):
 		else:
 			return str(playOrder)[6:].replace('N', " n")
 
-ABORT_KEYS = ['a', 'e']
+ABORT_KEYS = ['a', 'e', 'q']
 SAVE_KEYS = ['s']
 PAUSE_KEYS = ['p', '\n']
 RESTART_KEYS = ['r', '[H']
