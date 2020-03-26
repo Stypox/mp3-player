@@ -576,8 +576,8 @@ class PlaylistsPlayer:
 			player = vlc.MediaPlayer(song.path)
 			player.play()
 			log(LogLevel.info,
-				("%d/%d ❤: %s" if Favourites.isFavourite(song) else "%d/%d: %s")
-				% (playlist.pos() + 1, len(playlist), song))
+				(("❤" if Favourites.isFavourite(song) else " ") + "  %s%d/%d: %s")
+				% (" " * (len(str(len(playlist))) - len(str(playlist.pos() + 1))), playlist.pos() + 1, len(playlist), song))
 			paused = False
 
 			while player.get_state() != vlc.State.Ended:
