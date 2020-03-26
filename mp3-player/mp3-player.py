@@ -39,10 +39,10 @@ class Order(Flag):
 	trackNumber = 8
 	random = 16
 	modified = 32
-	
+
 	none = 0
 	default = trackNumber
-	
+
 	@classmethod
 	def cast(cls, playOrder):
 		if type(playOrder) is cls:
@@ -160,7 +160,7 @@ class Options:
 			playlist = cls.parseArgsList(tmpArgs, playlistArgs)
 			if type(playlist) is Playlist:
 				cls.playlists.append(playlist)
-	
+
 		if len(cls.playlists) == 0 and len(Favourites.songs) == 0:
 			log(LogLevel.error, "No playlists provided and no favourite available")
 		else:
@@ -197,7 +197,7 @@ def log(level, *args, **kwargs):
 					toPrint = "[warning] "
 				else:
 					return
-					
+
 				firstTime = True
 				for arg in args:
 					if firstTime:
@@ -312,7 +312,7 @@ else:
 				readChar = sys.stdin.read(1)
 				if readChar == '[':
 					readChar += sys.stdin.read(1)
-			
+
 			return Event.generate(readChar)
 
 	Keyboard.init()
@@ -363,10 +363,10 @@ def sortPlaylist(playlist):
 		elif playlist.playOrder & Order.title:       playlist.songs = sorted(playlist.songs, key = lambda song: song.title())
 		elif playlist.playOrder & Order.artist:      playlist.songs = sorted(playlist.songs, key = lambda song: song.artist())
 		elif playlist.playOrder & Order.trackNumber: playlist.songs = sorted(playlist.songs, key = lambda song: song.trackNumber())
-		
+
 		if playlist.playOrder & Order.modified:
 			if len(playlist.songs) < 5:
-				random.shuffle(playlist.songs)				
+				random.shuffle(playlist.songs)
 			for i in range(0, len(playlist.songs) - 5, 4):
 				playlist.songs[i:i+5] = sorted(playlist.songs[i:i+5], key=lambda s: random.random())
 
@@ -383,7 +383,7 @@ class Favourites:
 				log(LogLevel.debug, "Discarding favourite song at \"%s\": no such file" % songFilename)
 		if len(cls.songs) == 0:
 			log(LogLevel.warning, "Favourites playlist is empty")
-		
+
 		if playOrder is None:
 			if filePlayOrder is None:
 				cls.playOrder = Order.default
@@ -393,7 +393,7 @@ class Favourites:
 			cls.playOrder = Order.cast(playOrder)
 			if playOrder is not None and cls.playOrder is None:
 				raise RuntimeError("Invalid play order \"%s\" for favourites of type \"%s\"" % (playOrder, type(playOrder)))
-		
+
 		if startSong is None:
 			if fileStartSong is None:
 				cls.currentSong = 0
@@ -452,7 +452,7 @@ class Favourites:
 			else:
 				favouritesFile.write("%s\n%s\n" % (cls.playOrder.value, cls.currentSong))
 			favouritesFile.write("\n".join([os.path.abspath(song.path) for song in cls.songs]))
-				
+
 	@classmethod
 	def add(cls, song):
 		cls.songs.append(song)
@@ -479,7 +479,7 @@ class Playlist:
 			if len(directoryOrFilenames) > 0 and directoryOrFilenames[-1] != "/":
 				directoryOrFilenames += "/"
 			self.directory = directoryOrFilenames
-			
+
 			self.playOrder = Order.cast(playOrder)
 			if playOrder is not None and self.playOrder is None:
 				raise RuntimeError("Invalid play order \"%s\" at playlist \"%s\" of type \"%s\"" % (playOrder, self.directory, type(playOrder)))
@@ -503,7 +503,7 @@ class Playlist:
 							try: self.currentSong = int(fileStartSong)
 							except ValueError: pass
 				except FileNotFoundError: pass
-					
+
 				if self.playOrder is None:
 					self.playOrder = Order.default
 				if self.currentSong is None or self.playOrder is Order.random:
@@ -521,7 +521,7 @@ class Playlist:
 
 			self.songs = []
 			for filename in directoryOrFilenames:
-				self.songs.append(Song(filename))			
+				self.songs.append(Song(filename))
 		else:
 			raise TypeError()
 
@@ -569,7 +569,7 @@ class PlaylistsPlayer:
 	def __init__(self, playlists):
 		self.playlists = playlists
 		self.currentPlaylist = 0
-	
+
 	@classmethod
 	def playPlaylist(cls, playlist):
 		for song in playlist:
@@ -639,7 +639,7 @@ class PlaylistsPlayer:
 		nrPlaylists = len(self.playlists)
 		if nrPlaylists == 0:
 			return
-		
+
 		while 1:
 			if type(self.playlists[self.currentPlaylist]) is Playlist:
 				log(LogLevel.info, 'Now playing playlist at "%s", sorted by %s' % (
@@ -658,7 +658,7 @@ class PlaylistsPlayer:
 				return
 			elif event == PlaylistsPlayer.Event.abort:
 				return
-			
+
 			while self.currentPlaylist >= nrPlaylists:
 				self.currentPlaylist -= nrPlaylists
 			while self.currentPlaylist < 0:
