@@ -20,6 +20,7 @@ from time import sleep
 import sys
 from enum import Enum, Flag
 import argparse
+import math
 
 
 SETTINGS_FILENAME = "mp3-player-settings.txt"
@@ -32,6 +33,7 @@ ARTIST_ORDER_CODES = ["2", "a", "artist", "author"]
 TRACK_NUMBER_ORDER_CODES = ["3", "n", "number", "tracknumber"]
 RANDOM_ORDER_CODES = ["4", "r", "random"]
 MODIFIED_ORDER_CODES = ["m", "modified"]
+DISTRIBUTED_ORDER_CODES = ["d", "distributed"]
 class Order(Flag):
 	path = 1
 	title = 2
@@ -39,6 +41,7 @@ class Order(Flag):
 	trackNumber = 8
 	random = 16
 	modified = 32
+	distributed = 64
 
 	none = 0
 	default = trackNumber
@@ -48,22 +51,21 @@ class Order(Flag):
 		if type(playOrder) is cls:
 			return playOrder
 		elif type(playOrder) is str:
-			isModified, order = None, None
+			modifier, order = None, None
 			if '-' in playOrder:
-				isModified, order = playOrder.split('-', 1)
-				if isModified in MODIFIED_ORDER_CODES:
-					isModified = cls.modified
-				else:
-					return None
+				modifier, order = playOrder.split('-', 1)
+				if modifier in MODIFIED_ORDER_CODES:      modifier = cls.modified
+				elif modifier in DISTRIBUTED_ORDER_CODES: modifier = cls.distributed
+				else:                                     return None
 			else:
-				isModified = cls.none
+				modifier = cls.none
 				order = playOrder
 
-			if   order in PATH_ORDER_CODES:         return cls.alphabetical | isModified
-			elif order in TITLE_ORDER_CODES:        return cls.title | isModified
-			elif order in ARTIST_ORDER_CODES:       return cls.artist | isModified
-			elif order in TRACK_NUMBER_ORDER_CODES: return cls.trackNumber | isModified
-			elif order in RANDOM_ORDER_CODES:       return cls.random | isModified
+			if   order in PATH_ORDER_CODES:         return cls.alphabetical | modifier
+			elif order in TITLE_ORDER_CODES:        return cls.title | modifier
+			elif order in ARTIST_ORDER_CODES:       return cls.artist | modifier
+			elif order in TRACK_NUMBER_ORDER_CODES: return cls.trackNumber | modifier
+			elif order in RANDOM_ORDER_CODES:       return cls.random | modifier
 			else:
 				try:
 					return Order(int(playOrder))
@@ -99,7 +101,7 @@ class Options:
 	argParser.add_argument('-q', '--quiet', action='store_true', default=False, help="do not print anything")
 	argParser.add_argument('-v', '--verbose', action='store_true', default=False, help="print more debug information")
 	argParser.add_argument('-w', '--limit-to-console-width', action='store_true', default=False, help="print to the console only part of the output so that it can fit in the console width")
-	argParser.add_argument('-o', '--favourites-play-order', type=str, default=None, help="favourites play order. Must match [m|modified]-(p|path|t|title|a|artist|n|number|tracknumber|r|random)")
+	argParser.add_argument('-o', '--favourites-play-order', type=str, default=None, help="favourites play order. Must match [m-|modified-|d-|distributed-](p|path|t|title|a|artist|n|number|tracknumber|r|random)")
 	argParser.add_argument('-s', '--favourites-start-song', type=int, default=None, help="favourites start index")
 	argParser.add_argument('playlists', nargs='*', metavar='DIRECTORIES', help="playlists to play (DIRECTORY) starting from INDEX (defaults to 0). FORMAT must match [m|modified]-(p|path|t|title|a|artist|n|number|tracknumber|r|random) (defaults to random). Formatted this way: DIRECTORY [FORMAT] [INDEX] - ... - DIRECTORY [FORMAT] [INDEX]")
 
@@ -369,6 +371,19 @@ def sortPlaylist(playlist):
 				random.shuffle(playlist.songs)
 			for i in range(0, len(playlist.songs) - 5, 4):
 				playlist.songs[i:i+5] = sorted(playlist.songs[i:i+5], key=lambda s: random.random())
+		elif playlist.playOrder & Order.distributed:
+			indices = list(range(len(playlist.songs)))
+			copiedPlaylist = []
+			# sample from a random variable distributed as Uniform[1, ...]**(1/exponent):
+			# videos early in the list have higher probability, but not by too much
+			while len(indices) > 0:
+				exponent = min(8 / len(indices), 1)
+				random_var_squared = random.uniform(1, (len(indices) + 0.99) ** exponent)
+				random_var = int(random_var_squared ** (1/exponent) - 1)
+				i = indices.pop(random_var)
+				copiedPlaylist.append(playlist.songs[i])
+			playlist.songs[:] = copiedPlaylist[:]
+
 
 class Favourites:
 	@classmethod
