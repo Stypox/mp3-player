@@ -29,8 +29,10 @@ The script provides several ways to **sort songs** and uses [ID3 metadata](https
 (codes: "n" or "number" or "tracknumber")
 * **Random**: randomly shuffles all the songs 
 (codes: "r" or "random")
-* **Modified** (prefix): after sorting the songs as requested, this modifier introduces some variability
+* **Modified** (prefix): after sorting the songs as requested, this modifier introduces some small variability
 (prefix codes: "m-" or "modified-")
+* **Distributed** (prefix): after sorting the songs as requested, this modifier shuffles the songs according to a probability distribution that picks one song at a time preferring songs that come first in the sorted list but still picking later songs often enough
+(prefix codes: "d-" or "distributed-")
 
 For example: "p" -> sorted by path; "m-number" -> sorted by track number with some variability;
 
